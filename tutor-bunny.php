@@ -51,3 +51,31 @@ function tutor_lms_bunnynet_integration_init() {
     }
 }
 add_action('plugins_loaded', 'tutor_lms_bunnynet_integration_init');
+
+/**
+ * Enqueue admin scripts for Bunny.net integration.
+ */
+function tutor_lms_bunnynet_enqueue_admin_scripts($hook) {
+    // Check if we are on the lesson or course editor page
+    if ('post.php' === $hook || 'post-new.php' === $hook) {
+        global $post;
+
+        // Ensure this is a Tutor LMS lesson or course post type
+        if ($post->post_type === 'tutor_lesson' || $post->post_type === 'tutor_course') {
+            wp_enqueue_script(
+                'bunny-video-upload',
+                plugin_dir_url(__FILE__) . 'assets/js/bunny-video-upload.js',
+                ['jquery'], // Add jQuery as a dependency if needed
+                '2.0.0',
+                true // Load the script in the footer
+            );
+
+            // Add localized data for AJAX and other variables
+            wp_localize_script('bunny-video-upload', 'bunnyVideoUpload', [
+                'ajaxurl' => admin_url('admin-ajax.php'),
+                'nonce'   => wp_create_nonce('bunny_video_upload_nonce'),
+            ]);
+        }
+    }
+}
+add_action('admin_enqueue_scripts', 'tutor_lms_bunnynet_enqueue_admin_scripts');

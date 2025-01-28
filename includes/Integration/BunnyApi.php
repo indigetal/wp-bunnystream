@@ -226,5 +226,73 @@ class BunnyApi {
         $endpoint = "library/{$this->library_id}/collections/{$collectionId}";
         return $this->sendJsonToBunny($endpoint, 'PUT', $data);
     }
+
+    /**
+     * Upload a video to Bunny.net.
+     *
+     * @param string $filePath The path to the video file on the server.
+     * @param string $collectionId The collection ID to associate the video with (optional).
+     * @return array|WP_Error The API response or WP_Error on failure.
+     */
+    public function uploadVideo($filePath, $collectionId = null) {
+        if (empty($this->library_id)) {
+            return new \WP_Error('missing_library_id', __('Library ID is required to upload a video.', 'tutor-lms-bunnynet-integration'));
+        }
+
+        if (!file_exists($filePath)) {
+            return new \WP_Error('file_not_found', __('The video file does not exist.', 'tutor-lms-bunnynet-integration'));
+        }
+
+        // Build the API endpoint
+        $endpoint = "library/{$this->library_id}/videos";
+        if ($collectionId) {
+            $endpoint .= "?collection={$collectionId}";
+        }
+
+        // Open the file for streaming
+        $fileHandle = fopen($filePath, 'r');
+        if (!$fileHandle) {
+            return new \WP_Error('file_error', __('Unable to open the video file for reading.', 'tutor-lms-bunnynet-integration'));
+        }
+
+        // Prepare headers
+        $headers = [
+            'AccessKey' => $this->access_key,
+            'Content-Type' => 'application/octet-stream',
+        ];
+
+        // Build request arguments
+        $args = [
+            'method' => 'POST',
+            'headers' => $headers,
+            'body' => $fileHandle,
+            'timeout' => 300, // Increase timeout for larger video uploads
+        ];
+
+        // Send request
+        $url = $this->video_base_url . ltrim($endpoint, '/');
+        error_log('Uploading video to Bunny.net: ' . $url);
+        $response = wp_remote_request($url, $args);
+
+        // Close the file handle
+        fclose($fileHandle);
+
+        if (is_wp_error($response)) {
+            return $response;
+        }
+
+        $response_code = wp_remote_retrieve_response_code($response);
+        $response_body = wp_remote_retrieve_body($response);
+
+        if ($response_code < 200 || $response_code >= 300) {
+            return new \WP_Error(
+                'bunny_api_http_error',
+                sprintf(__('HTTP Error %d: %s (Endpoint: %s)', 'tutor-lms-bunnynet-integration'), $response_code, $response_body, $endpoint)
+            );
+        }
+
+        return json_decode($response_body, true);
+    }
+
     
 }

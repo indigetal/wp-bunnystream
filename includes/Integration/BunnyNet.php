@@ -1,211 +1,146 @@
 <?php
 /**
- * Override Tutor default & integrate BunnyNet
+ * Integrate Bunny.net as a video source in Tutor LMS.
  *
  * @package TutorLMSBunnyNetIntegration\Integration
- * @since v1.0.0
+ * @since v2.0.0
  */
 
 namespace Tutor\BunnyNetIntegration\Integration;
 
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
+if (!defined('ABSPATH')) {
+    exit; // Exit if accessed directly.
 }
 
 /**
- * Add action & filter to override Tutor default
- * & incorporate BunnyNet
- *
- * @version  1.0.0
- * @package  TutorLMSBunnyNetIntegration\Integration
- * @category Integration
- * @author   Themeum <support@themeum.com>
+ * BunnyNet Integration Class
+ * Handles Bunny.net video source integration with Tutor LMS.
  */
 class BunnyNet {
 
-	/**
-	 * Register action & filter hooks
-	 *
-	 * @since v1.0.0
-	 */
-	public function __construct() {
-		add_filter( 'tutor_preferred_video_sources', __CLASS__ . '::filter_preferred_sources' );
-		add_filter( 'tutor_single_lesson_video', __CLASS__ . '::filter_lesson_video', 10, 3 );
-		add_filter( 'tutor_course/single/video', __CLASS__ . '::filter_course_video' );
-		add_action( 'tutor_after_video_meta_box_item', __CLASS__ . '::meta_box_item', 10, 2 );
-		add_filter( 'should_tutor_load_template', __CLASS__ . '::filter_template_load', 99, 2 );
-		add_action( 'tutor_after_video_source_icon', __CLASS__ . '::video_source_icon' );
-	}
+    /**
+     * Constructor to register action & filter hooks.
+     *
+     * @since v2.0.0
+     */
+    public function __construct() {
+        add_filter('tutor_preferred_video_sources', [__CLASS__, 'registerVideoSource']);
+        add_action('tutor_after_video_meta_box_item', [__CLASS__, 'addVideoUploadButton'], 10, 2);
+        add_action('wp_ajax_bunnynet_upload_video', [__CLASS__, 'handleVideoUpload']);
+    }
 
-	/**
-	 * Filter tutor default video sources
-	 *
-	 * @since v1.0.0
-	 *
-	 * @param array $video_source default video sources.
-	 *
-	 * @return array
-	 */
-	public static function filter_preferred_sources( array $video_source ): array {
-		$video_source['bunnynet'] = array(
-			'title' => __( 'BunnyNet', 'tutor-lms-bunnynet-integration' ),
-			'icon'  => 'bunnynet',
-		);
+    /**
+     * Register Bunny.net as a video source.
+     *
+     * @param array $video_sources Existing video sources.
+     * @return array Modified video sources.
+     */
+    public static function registerVideoSource(array $video_sources): array {
+        $video_sources['bunnynet'] = [
+            'title' => __('Bunny.net', 'tutor-lms-bunnynet-integration'),
+            'icon'  => 'bunnynet',
+        ];
 
-		return $video_source;
-	}
+        return $video_sources;
+    }
 
-	/**
-	 * Filter single lesson video on the course content
-	 * (aka spotlight) section
-	 *
-	 * @since v1.0.0
-	 *
-	 * @param string $content  tutor's default lesson content.
-	 *
-	 * @return string
-	 */
-	public static function filter_lesson_video( $content ) {
-		$bunny_video_id = self::is_bunnynet_video_source();
-		if ( false !== $bunny_video_id ) {
-			$content = self::get_embed_video( $bunny_video_id );
-		}
-		return $content;
-	}
+    /**
+     * Add a Bunny.net video upload button to the lesson meta box.
+     *
+     * @param string $style The display style.
+     * @param object $post The post object.
+     * @return void
+     */
+    public static function addVideoUploadButton(string $style, $post): void {
+        $video_data = maybe_unserialize(get_post_meta($post->ID, '_video', true));
+        $bunnynet_video_id = $video_data['source_bunnynet'] ?? '';
+        ?>
+        <div class="video-source-item video-source-bunnynet" style="<?php echo esc_attr($style); ?>">
+            <label for="bunnynet-video-upload">
+                <?php esc_html_e('Upload Video to Bunny.net', 'tutor-lms-bunnynet-integration'); ?>
+            </label>
+            <input 
+                id="bunnynet-video-upload" 
+                type="file" 
+                accept="video/*" 
+                data-bunnynet-upload="true"
+            />
+            <p class="description">
+                <?php esc_html_e('Upload your video directly to Bunny.net for optimized playback.', 'tutor-lms-bunnynet-integration'); ?>
+            </p>
+        </div>
+        <script>
+            jQuery(document).ready(function($) {
+                $('#bunnynet-video-upload').on('change', function(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
 
-	/**
-	 * Filter course intro video if source if bunny net
-	 *
-	 * @since v1.0.0
-	 *
-	 * @param string $content course intro video content.
-	 *
-	 * @return string
-	 */
-	public static function filter_course_video( $content ) {
-		$bunny_video_id = self::is_bunnynet_video_source();
-		if ( false !== $bunny_video_id ) {
-			$content = self::get_embed_video( $bunny_video_id );
-		}
-		return $content;
-	}
+                    const formData = new FormData();
+                    formData.append('action', 'bunnynet_upload_video');
+                    formData.append('file', file);
+                    formData.append('post_id', <?php echo (int) $post->ID; ?>);
 
-	/**
-	 * Add bunny net source field on the meta box
-	 *
-	 * @since v1.0.0
-	 *
-	 * @param string $style display style.
-	 * @param object $post  post object.
-	 *
-	 * @return void
-	 */
-	public static function meta_box_item( $style, $post ):void {
-		$video           = maybe_unserialize( get_post_meta( $post->ID, '_video', true ) );
-		$video_source    = tutor_utils()->avalue_dot( 'source', $video, 'bunnynet' );
-		$bunnynet_source = tutor_utils()->avalue_dot( 'source_bunnynet', $video );
-		?>
-		<div class="tutor-mt-16 video-metabox-source-item video_source_wrap_bunnynet tutor-dashed-uploader" style="<?php echo esc_attr( $style ); ?>">
-			<input class="tutor-form-control" type="text" name="video[source_bunnynet]" value="<?php echo esc_attr( $bunnynet_source ); ?>" placeholder="<?php esc_html_e( 'Place Your BunnyNet Videos\'s Iframe URL Here', 'tutor-lms-bunnynet-integration' ); ?>">
-		</div>
-		<script>
-			// Don't show input field if video source is not bunny net.
-			var bunnyNet = document.querySelector('.video_source_wrap_bunnynet');
-			var videoSource = document.querySelector('.tutor_lesson_video_source.no-tutor-dropdown');
-			var icon = document.querySelector('i[data-for=bunnynet]');
-			if (videoSource) {
-				if (videoSource.value != 'bunnynet') {
-					bunnyNet.style = 'display:none;'
-				}
-				
-				if (videoSource.value == 'bunnynet') {
-					icon.style = 'display:block;';
-				} else {
-					icon.style.display = 'display:none;';
-				}
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        data: formData,
+                        processData: false,
+                        contentType: false,
+                        success: function(response) {
+                            if (response.success) {
+                                alert('Video uploaded successfully!');
+                            } else {
+                                alert('Error: ' + response.data.message);
+                            }
+                        },
+                        error: function() {
+                            alert('An unexpected error occurred.');
+                        },
+                    });
+                });
+            });
+        </script>
+        <?php
+    }
 
-				videoSource.onchange = (e) => {
-					console.log(e.target.value);
-					if (e.target.value == 'bunnynet') {
-						icon.style = 'display:block;';
-					} else {
-						icon.style = 'display:none;';
-						console.log('none');
-					}
-				}
-			}
-		</script>
-		<?php
-	}
+    /**
+     * Handle AJAX video upload.
+     *
+     * @return void
+     */
+    public static function handleVideoUpload(): void {
+        // Verify user permissions.
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(['message' => __('Unauthorized access.', 'tutor-lms-bunnynet-integration')], 403);
+        }
 
-	/**
-	 * If video source is bunny net then let not
-	 * load the template from tutor
-	 *
-	 * @since v1.0.0
-	 *
-	 * @param boolean $should_load should load template.
-	 * @param string  $template  template name.
-	 *
-	 * @return bool
-	 */
-	public static function filter_template_load( bool $should_load, string $template ):bool {
-		if ( false !== self::is_bunnynet_video_source() && 'single.video.bunnynet' === $template ) {
-			$should_load = false;
-		}
-		return $should_load;
-	}
+        // Check for uploaded file.
+        if (empty($_FILES['file']) || empty($_POST['post_id'])) {
+            wp_send_json_error(['message' => __('Missing file or post ID.', 'tutor-lms-bunnynet-integration')], 400);
+        }
 
-	/**
-	 * Check video source is bunnynet
-	 *
-	 * @since v1.0.0
-	 *
-	 * @return mixed  video source if exists otherwise false
-	 */
-	public static function is_bunnynet_video_source() {
-		$video_info = tutor_utils()->get_video_info();
-		$response   = false;
-		if ( $video_info ) {
-			$bunny_video_id = tutor_utils()->array_get( 'source_bunnynet', $video_info );
-			$video_source   = $video_info->source;
-			if ( 'bunnynet' === $video_source && '' !== $bunny_video_id ) {
-				$response = $bunny_video_id;
-			}
-		}
-		return $response;
-	}
+        $file = $_FILES['file'];
+        $post_id = (int) sanitize_text_field($_POST['post_id']);
 
-	/**
-	 * Get embedded bunny net video
-	 *
-	 * @since v1.0.0
-	 *
-	 * @param string $bunny_video_id video id for embedding.
-	 *
-	 * @return string video content
-	 */
-	private static function get_embed_video( $bunny_video_id ):string {
-		ob_start();
-		?>
-		<div class="tutor-video-player">
-			<div style="position: relative; padding-top: 56.25%;">
-				<iframe src="<?php echo esc_attr( $bunny_video_id ); ?>" loading="lazy" style="border: none; position: absolute; top: 0; height: 100%; width: 100%;" allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;" allowfullscreen="true"></iframe>
-			</div>
-		</div>
-		<?php
-		return ob_get_clean();
-	}
+        // Call Bunny.net API to upload the video.
+        $bunny_api = $GLOBALS['bunny_net_api'] ?? null;
+        if (!$bunny_api) {
+            wp_send_json_error(['message' => __('Bunny.net API is not initialized.', 'tutor-lms-bunnynet-integration')], 500);
+        }
 
-	/**
-	 * Video source icon that will be visible on the
-	 * video source dropdown
-	 *
-	 * @since v1.0.0
-	 *
-	 * @return void
-	 */
-	public static function video_source_icon() {
-		echo '<i class="tutor-icon-video-camera-o" data-for="bunnynet"></i>';
-	}
+        $response = $bunny_api->uploadVideo($file['tmp_name'], $file['name']);
+
+        if (is_wp_error($response)) {
+            wp_send_json_error(['message' => $response->get_error_message()], 500);
+        }
+
+        // Save video URL to post metadata.
+        $video_data = [
+            'source' => 'bunnynet',
+            'source_bunnynet' => $response['url'] ?? '',
+        ];
+        update_post_meta($post_id, '_video', $video_data);
+
+        wp_send_json_success(['message' => __('Video uploaded successfully.', 'tutor-lms-bunnynet-integration')]);
+    }
 }
