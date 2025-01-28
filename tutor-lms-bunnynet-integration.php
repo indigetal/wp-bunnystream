@@ -22,6 +22,12 @@ require_once plugin_dir_path(__FILE__) . 'includes/Integration/BunnyApi.php';
 // Include Bunny.net settings page.
 require_once plugin_dir_path(__FILE__) . 'includes/Admin/BunnySettings.php';
 
+// Include Bunny.net database manager.
+require_once plugin_dir_path(__FILE__) . 'includes/Integration/BunnyDatabaseManager.php';
+
+// Include Bunny.net user integration.
+require_once plugin_dir_path(__FILE__) . 'includes/Integration/BunnyUserIntegration.php';
+
 /**
  * Initialize the plugin.
  */
@@ -32,6 +38,12 @@ function tutor_lms_bunnynet_integration_init() {
 
     // Initialize BunnySettings to ensure the settings page appears.
     new \Tutor\BunnyNetIntegration\Admin\BunnySettings();
+
+    // Initialize database manager for Bunny.net collections.
+    new \Tutor\BunnyNetIntegration\Integration\BunnyDatabaseManager();
+
+    // Initialize user integration for handling instructor collections.
+    new \Tutor\BunnyNetIntegration\Integration\BunnyUserIntegration();
 
     // Global Bunny.net API instance (optional).
     if (!empty($access_key) && !empty($library_id)) {

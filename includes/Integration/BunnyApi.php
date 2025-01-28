@@ -93,87 +93,7 @@ class BunnyApi {
         }
     
         return new \WP_Error('library_creation_failed', __('Library creation failed. Response did not include a library ID.', 'tutor-lms-bunnynet-integration'));
-    }    
-
-    /**
-     * Create a new video object.
-     */
-    public function createVideoObject($title) {
-        if (empty($this->library_id)) {
-            return new \WP_Error('missing_library_id', __('Library ID is not set in the plugin settings.', 'tutor-lms-bunnynet-integration'));
-        }
-
-        if (empty($title)) {
-            return new \WP_Error('missing_video_title', __('Video title is required.', 'tutor-lms-bunnynet-integration'));
-        }
-
-        $endpoint = "library/{$this->library_id}/videos"; // Video management endpoint
-        $data = ['title' => $title];
-
-        return $this->sendJsonToBunny($endpoint, 'POST', $data); // Use video_base_url
-    }            
-
-    /**
-     * Upload a video file to Bunny.net.
-     *
-     * @param string $libraryId The ID of the library where the video will be uploaded.
-     * @param string $filePath The file path of the video to be uploaded.
-     * @param string $title The title of the video.
-     * @return array|WP_Error The API response or WP_Error on failure.
-     */
-    public function uploadVideo($filePath, $title) {
-        if (empty($this->library_id)) {
-            return new \WP_Error('missing_library_id', __('Library ID is not set in the plugin settings.', 'tutor-lms-bunnynet-integration'));
-        }
-    
-        if (empty($filePath) || !file_exists($filePath)) {
-            return new \WP_Error('missing_or_invalid_file', __('The file path is missing or invalid.', 'tutor-lms-bunnynet-integration'));
-        }
-    
-        if (empty($title)) {
-            return new \WP_Error('missing_video_title', __('Video title is required.', 'tutor-lms-bunnynet-integration'));
-        }
-    
-        $file = fopen($filePath, 'r');
-        if (!$file) {
-            return new \WP_Error('file_error', __('Unable to open file for reading.', 'tutor-lms-bunnynet-integration'));
-        }
-    
-        $endpoint = "library/{$this->library_id}/videos";
-        $headers = [
-            'AccessKey' => $this->access_key,
-            'Content-Type' => 'application/octet-stream',
-            'Title' => $title,
-        ];
-    
-        error_log("Uploading video: LibraryID={$this->library_id}, FilePath={$filePath}, Title={$title}");
-    
-        $response = wp_remote_request($this->base_url . $endpoint, [
-            'method' => 'POST',
-            'headers' => $headers,
-            'body' => $file,
-            'timeout' => 20,
-        ]);
-    
-        fclose($file);
-    
-        if (is_wp_error($response)) {
-            error_log('Bunny API Upload Error: ' . $response->get_error_message());
-            return $response;
-        }
-    
-        $response_body = wp_remote_retrieve_body($response);
-        $response_code = wp_remote_retrieve_response_code($response);
-    
-        error_log("Bunny API Upload Response Code: {$response_code}");
-        error_log("Bunny API Upload Response Body: {$response_body}");
-    
-        if ($response_code >= 400) {
-            return new \WP_Error('bunny_api_upload_error', sprintf(__('HTTP Error %d: %s', 'tutor-lms-bunnynet-integration'), $response_code, $response_body));
-        }
-    
-        return json_decode($response_body, true);
-    }            
+    }                      
 
     /**
      * Retrieve the playback URL of a video.
@@ -212,6 +132,99 @@ class BunnyApi {
 
         // Check if the status indicates the video is created
         return isset($status['status']) && $status['status'] === 'Success';
+    }
+
+        /**
+     * Create a new collection within a library.
+     *
+     * @param string $collectionName The name of the collection.
+     * @return array|WP_Error The created collection data or WP_Error on failure.
+     */
+    public function createCollection($collectionName) {
+        if (empty($this->library_id)) {
+            return new \WP_Error('missing_library_id', __('Library ID is required to create a collection.', 'tutor-lms-bunnynet-integration'));
+        }
+
+        if (empty($collectionName)) {
+            return new \WP_Error('missing_collection_name', __('Collection name is required.', 'tutor-lms-bunnynet-integration'));
+        }
+
+        $endpoint = "library/{$this->library_id}/collections";
+        $data = [
+            'name' => $collectionName,
+        ];
+
+        $response = $this->sendJsonToBunny($endpoint, 'POST', $data);
+
+        if (is_wp_error($response)) {
+            return $response;
+        }
+
+        return isset($response['id']) ? $response : new \WP_Error('collection_creation_failed', __('Failed to create collection.', 'tutor-lms-bunnynet-integration'));
+    }
+
+    /**
+     * Delete a collection by its ID.
+     *
+     * @param string $collectionId The ID of the collection to delete.
+     * @return bool|WP_Error True on success, or WP_Error on failure.
+     */
+    public function deleteCollection($collectionId) {
+        if (empty($this->library_id)) {
+            return new \WP_Error('missing_library_id', __('Library ID is required to delete a collection.', 'tutor-lms-bunnynet-integration'));
+        }
+
+        if (empty($collectionId)) {
+            return new \WP_Error('missing_collection_id', __('Collection ID is required.', 'tutor-lms-bunnynet-integration'));
+        }
+
+        $endpoint = "library/{$this->library_id}/collections/{$collectionId}";
+        $response = $this->sendJsonToBunny($endpoint, 'DELETE');
+
+        if (is_wp_error($response)) {
+            return $response;
+        }
+
+        return true;
+    }
+
+    /**
+     * Get details of a specific collection.
+     *
+     * @param string $collectionId The ID of the collection to retrieve.
+     * @return array|WP_Error The collection details or WP_Error on failure.
+     */
+    public function getCollection($collectionId) {
+        if (empty($this->library_id)) {
+            return new \WP_Error('missing_library_id', __('Library ID is required to fetch a collection.', 'tutor-lms-bunnynet-integration'));
+        }
+
+        if (empty($collectionId)) {
+            return new \WP_Error('missing_collection_id', __('Collection ID is required.', 'tutor-lms-bunnynet-integration'));
+        }
+
+        $endpoint = "library/{$this->library_id}/collections/{$collectionId}";
+        return $this->sendJsonToBunny($endpoint, 'GET');
+    }
+
+    /**
+     * Update the details of an existing collection.
+     *
+     * @param string $collectionId The ID of the collection to update.
+     * @param array $data The updated data for the collection.
+     * @return array|WP_Error The updated collection details or WP_Error on failure.
+     */
+    public function updateCollection($collectionId, $data) {
+        if (empty($this->library_id)) {
+            return new \WP_Error('missing_library_id', __('Library ID is required to update a collection.', 'tutor-lms-bunnynet-integration'));
+        }
+
+        if (empty($collectionId)) {
+            return new \WP_Error('missing_collection_id', __('Collection ID is required.', 'tutor-lms-bunnynet-integration'));
+        }
+
+        $endpoint = "library/{$this->library_id}/collections/{$collectionId}";
+        return $this->sendJsonToBunny($endpoint, 'PUT', $data);
     }
     
 }
