@@ -12,8 +12,8 @@ if (!defined('ABSPATH')) {
 }
 
 // Include required files
-require_once plugin_dir_path(__FILE__) . 'includes/Integration/BunnyApi.php';
 require_once plugin_dir_path(__FILE__) . 'includes/Admin/BunnySettings.php';
+require_once plugin_dir_path(__FILE__) . 'includes/Integration/BunnyApi.php';
 require_once plugin_dir_path(__FILE__) . 'includes/Integration/BunnyDatabaseManager.php';
 require_once plugin_dir_path(__FILE__) . 'includes/Integration/BunnyUserIntegration.php';
 

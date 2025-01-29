@@ -2,6 +2,8 @@
 
 namespace WP_BunnyStream\Integration;
 
+use WP_BunnyStream\Admin\BunnySettings;
+
 class BunnyApi {
     private static $instance = null;
     private $video_base_url = 'https://video.bunnycdn.com/'; // For video-related actions
