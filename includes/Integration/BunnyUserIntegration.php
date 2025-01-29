@@ -1,6 +1,8 @@
 <?php
 namespace WP_BunnyStream\Integration;
 
+use WP_BunnyStream\Integration\BunnyDatabaseManager;
+
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly.
 }
@@ -58,34 +60,30 @@ class BunnyUserIntegration {
     public function handleVideoUpload($userId, $videoPath) {
         $dbManager = new BunnyDatabaseManager();
         $collectionId = $dbManager->getUserCollectionId($userId);
-
+    
         if (!$collectionId) {
             // No collection exists for the user, create one.
             $collectionName = "User_Collection_{$userId}";
-            $existingCollection = $this->bunnyApi->getCollectionByUserId($userId);
-            
-            if ($existingCollection) {
-                $collectionId = $existingCollection;
-            } else {
-                $response = $this->bunnyApi->createCollection($collectionName);
-                if (is_wp_error($response)) {
-                    error_log('Failed to create collection for user ' . $userId . ': ' . $response->get_error_message());
-                    return;
-                }
-                $collectionId = $response['id'];
-                $dbManager->storeUserCollection($userId, $collectionId);
+            $response = $this->bunnyApi->createCollection($collectionName);
+    
+            if (is_wp_error($response)) {
+                error_log('Failed to create collection for user ' . $userId . ': ' . $response->get_error_message());
+                return;
             }
+    
+            $collectionId = $response['id'];
+            $dbManager->storeUserCollection($userId, $collectionId);
         }
-
+    
         // Upload video
         $uploadResponse = $this->bunnyApi->uploadVideo($videoPath, $collectionId);
         if (is_wp_error($uploadResponse)) {
             error_log('Video upload failed for user ' . $userId . ': ' . $uploadResponse->get_error_message());
             return;
         }
-
+    
         error_log("Video uploaded by user {$userId} added to collection {$collectionId}.");
-    }
+    }       
 
     /**
      * Handle user deletion.

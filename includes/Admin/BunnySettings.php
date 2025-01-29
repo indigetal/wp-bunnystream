@@ -10,6 +10,7 @@
 namespace WP_BunnyStream\Admin;
 
 use WP_BunnyStream\Integration\BunnyApi;
+use WP_BunnyStream\Integration\BunnyDatabaseManager;
 
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly.
@@ -293,8 +294,10 @@ class BunnySettings {
         }
 
         // Check if collection already exists before creating a new one
-        $existing_collection = $this->bunnyApi->getCollectionByUserId(get_current_user_id());
-        if ($existing_collection) {
+        $dbManager = new \WP_BunnyStream\Integration\BunnyDatabaseManager();
+        $collectionId = $dbManager->getUserCollectionId(get_current_user_id());
+
+        if ($collectionId) {
             wp_send_json_success(['message' => __('Collection already exists.', 'wp-bunnystream')]);
         }
 

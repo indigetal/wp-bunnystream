@@ -25,9 +25,7 @@ class BunnyApiInstance {
 
     public static function getInstance() {
         if (self::$instance === null) {
-            $access_key = get_option('bunny_net_access_key', '');
-            $library_id = get_option('bunny_net_library_id', '');
-            self::$instance = new \WP_BunnyStream\Integration\BunnyApi($access_key, $library_id);
+            self::$instance = \WP_BunnyStream\Integration\BunnyApi::getInstance();
         }
         return self::$instance;
     }
