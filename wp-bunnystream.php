@@ -16,6 +16,7 @@ require_once plugin_dir_path(__FILE__) . 'includes/Admin/BunnySettings.php';
 require_once plugin_dir_path(__FILE__) . 'includes/Integration/BunnyApi.php';
 require_once plugin_dir_path(__FILE__) . 'includes/Integration/BunnyDatabaseManager.php';
 require_once plugin_dir_path(__FILE__) . 'includes/Integration/BunnyUserIntegration.php';
+require_once plugin_dir_path(__FILE__) . 'includes/Integration/BunnyMediaLibrary.php';
 
 /**
  * Singleton class for BunnyApi instance.
@@ -43,6 +44,7 @@ function wp_bunnystream_init() {
     new \WP_BunnyStream\Admin\BunnySettings();
     new \WP_BunnyStream\Integration\BunnyDatabaseManager();
     new \WP_BunnyStream\Integration\BunnyUserIntegration();
+    new \WP_BunnyStream\Integration\BunnyMediaLibrary();
 }
 add_action('plugins_loaded', 'wp_bunnystream_init');
 

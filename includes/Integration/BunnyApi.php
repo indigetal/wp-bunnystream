@@ -230,64 +230,81 @@ class BunnyApi {
         if (empty($library_id)) {
             return new \WP_Error('missing_library_id', __('Library ID is required to upload a video.', 'wp-bunnystream'));
         }
-
+    
         if (!file_exists($filePath)) {
             return new \WP_Error('file_not_found', __('The video file does not exist.', 'wp-bunnystream'));
         }
-
+    
         // Validate file size
         $fileSize = filesize($filePath);
         if ($fileSize > self::MAX_FILE_SIZE) {
             return new \WP_Error('file_too_large', __('File exceeds maximum allowed size of 500MB.', 'wp-bunnystream'));
         }
-
+    
         // Validate MIME type
         $mimeValidation = $this->validateMimeType($filePath);
         if (is_wp_error($mimeValidation)) {
             return $mimeValidation;
         }
-
-        // Upload video
+    
+        // Upload video to Bunny.net
         $endpoint = "library/{$library_id}/videos" . ($collectionId ? "?collection={$collectionId}" : "");
-
+    
         $videoBaseUrl = $this->video_base_url;
-        return $this->retryApiCall(function() use ($endpoint, $filePath, $videoBaseUrl) {
+        $uploadResponse = $this->retryApiCall(function() use ($endpoint, $filePath, $videoBaseUrl) {
             $fileHandle = fopen($filePath, 'r');
             if (!$fileHandle) {
                 return new \WP_Error('file_error', __('Unable to open the video file for reading.', 'wp-bunnystream'));
             }
-
+    
             $headers = [
                 'AccessKey' => $this->access_key,
                 'Content-Type' => 'application/octet-stream',
             ];
-
+    
             $args = [
                 'method' => 'POST',
                 'headers' => $headers,
                 'body' => $fileHandle,
                 'timeout' => 300,
             ];
-
+    
             $url = $this->video_base_url . ltrim($endpoint, '/');
             $response = wp_remote_request($url, $args);
             fclose($fileHandle);
-
+    
             if (is_wp_error($response)) {
                 return $response;
             }
-
+    
             $response_code = wp_remote_retrieve_response_code($response);
             $response_body = wp_remote_retrieve_body($response);
-
+    
             if ($response_code < 200 || $response_code >= 300) {
                 return new \WP_Error(
                     'bunny_api_http_error',
                     sprintf(__('HTTP Error %d: %s (Endpoint: %s)', 'wp-bunnystream'), $response_code, $response_body, $endpoint)
                 );
             }
-
+    
             return json_decode($response_body, true);
         });
-    }     
+    
+        if (is_wp_error($uploadResponse) || empty($uploadResponse['id'])) {
+            return new \WP_Error('upload_failed', __('Failed to upload video to Bunny.net.', 'wp-bunnystream'));
+        }
+    
+        $videoId = $uploadResponse['id'];
+    
+        // Retrieve playback URL
+        $playbackResponse = $this->getVideoPlaybackUrl($videoId);
+        if (is_wp_error($playbackResponse) || empty($playbackResponse['playbackUrl'])) {
+            return new \WP_Error('playback_url_error', __('Failed to retrieve video playback URL.', 'wp-bunnystream'));
+        }
+    
+        return [
+            'videoId' => $videoId,
+            'videoUrl' => $playbackResponse['playbackUrl']
+        ];
+    }         
 }
