@@ -7,33 +7,42 @@ if (!defined('ABSPATH')) {
 
 class BunnyMetadataManager {
     /**
-     * Updates the video metadata (_video) for the specified post.
+     * Store or update video metadata for posts or media library items.
      *
-     * @param int   $postId    The post ID.
-     * @param array $videoData The video data to save.
-     *
+     * @param int   $id        The WordPress post ID or attachment ID.
+     * @param array $videoData The video metadata including source, URL, collection ID, GUID, and local path.
      * @return bool True if metadata updated successfully, false otherwise.
      */
-    public function updatePostVideoMetadata($postId, $videoData) {
-        if (empty($postId) || empty($videoData)) {
-            error_log('BunnyMetadataManager: Invalid parameters for updatePostVideoMetadata.');
+    public function storeVideoMetadata($id, $videoData) {
+        if (empty($id) || empty($videoData)) {
+            error_log('BunnyMetadataManager: Invalid parameters for storeVideoMetadata.');
             return false;
         }
 
-        // Validate video data structure
-        if (!isset($videoData['source']) || !isset($videoData['source_bunnynet'])) {
-            error_log('BunnyMetadataManager: Missing required video data fields.');
+        // Ensure ID is either a post or an attachment
+        $postType = get_post_type($id);
+        if ($postType !== 'post' && $postType !== 'attachment') {
+            error_log("BunnyMetadataManager: Invalid post type ({$postType}) for ID {$id}.");
+            return false;
+        }
+
+        // Validate required keys
+        if (!isset($videoData['source'])) {
+            error_log('BunnyMetadataManager: Missing video source.');
             return false;
         }
 
         // Sanitize input
         $videoData = array_map('sanitize_text_field', $videoData);
+        if (isset($videoData['videoUrl'])) {
+            $videoData['videoUrl'] = esc_url($videoData['videoUrl']);
+        }
 
-        // Update metadata
-        $result = update_post_meta($postId, '_video', $videoData);
+        // Store metadata under `_video`
+        $result = update_post_meta($id, '_video', $videoData);
 
         if (!$result) {
-            error_log("BunnyMetadataManager: Failed to update metadata for post ID {$postId}.");
+            error_log("BunnyMetadataManager: Failed to store metadata for ID {$id}.");
             return false;
         }
 
@@ -41,22 +50,28 @@ class BunnyMetadataManager {
     }
 
     /**
-     * Helper method to retrieve video metadata for a specific post.
+     * Retrieve video metadata for posts or media library items.
      *
-     * @param int $postId The post ID.
-     *
+     * @param int $id The WordPress post ID or attachment ID.
      * @return array|null The video metadata or null if not found.
      */
-    public function getPostVideoMetadata($postId) {
-        if (empty($postId)) {
-            error_log('BunnyMetadataManager: Invalid post ID for getPostVideoMetadata.');
+    public function getVideoMetadata($id) {
+        if (empty($id)) {
+            error_log('BunnyMetadataManager: Invalid ID for getVideoMetadata.');
             return null;
         }
 
-        $videoData = get_post_meta($postId, '_video', true);
+        // Ensure ID is either a post or an attachment
+        $postType = get_post_type($id);
+        if ($postType !== 'post' && $postType !== 'attachment') {
+            error_log("BunnyMetadataManager: Invalid post type ({$postType}) for ID {$id}.");
+            return null;
+        }
 
-        if (!$videoData) {
-            error_log("BunnyMetadataManager: No video metadata found for post ID {$postId}.");
+        $videoData = get_post_meta($id, '_video', true);
+
+        if (empty($videoData)) {
+            error_log("BunnyMetadataManager: No video metadata found for ID {$id}.");
             return null;
         }
 
@@ -64,22 +79,28 @@ class BunnyMetadataManager {
     }
 
     /**
-     * Deletes the video metadata for a specific post.
+     * Deletes the video metadata for a specific post or media library item.
      *
-     * @param int $postId The post ID.
-     *
+     * @param int $id The post ID or attachment ID.
      * @return bool True if metadata deleted successfully, false otherwise.
      */
-    public function deletePostVideoMetadata($postId) {
-        if (empty($postId)) {
-            error_log('BunnyMetadataManager: Invalid post ID for deletePostVideoMetadata.');
+    public function deleteVideoMetadata($id) {
+        if (empty($id)) {
+            error_log('BunnyMetadataManager: Invalid ID for deleteVideoMetadata.');
             return false;
         }
 
-        $result = delete_post_meta($postId, '_video');
+        // Ensure ID is either a post or an attachment
+        $postType = get_post_type($id);
+        if ($postType !== 'post' && $postType !== 'attachment') {
+            error_log("BunnyMetadataManager: Invalid post type ({$postType}) for ID {$id}.");
+            return false;
+        }
+
+        $result = delete_post_meta($id, '_video');
 
         if (!$result) {
-            error_log("BunnyMetadataManager: Failed to delete metadata for post ID {$postId}.");
+            error_log("BunnyMetadataManager: Failed to delete metadata for ID {$id}.");
             return false;
         }
 

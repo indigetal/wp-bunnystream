@@ -63,6 +63,14 @@ class BunnyMediaLibrary {
         $bunny_video_id = $uploadResponse['videoId'];
         $bunny_video_url = $uploadResponse['videoUrl'] ?? '';
 
+        // Store metadata using the updated method
+        $this->metadataManager->storeVideoMetadata($upload['post_id'], [
+            'source' => 'bunnycdn',
+            'videoUrl' => $bunny_video_url,
+            'collectionId' => $collection_id,
+            'videoGuid' => $bunny_video_id,
+        ]);
+
         $upload['url'] = $bunny_video_url; // Replace WordPress URL with Bunny.net URL
         $upload['file'] = ''; // Prevent local file storage
         $upload['bunny_video_id'] = $bunny_video_id;
@@ -74,8 +82,8 @@ class BunnyMediaLibrary {
      * Store Bunny.net metadata when an attachment is added
      */
     public function handleAttachmentMetadata($post_id) {
-        $bunny_video_url = get_post_meta($post_id, '_bunny_video_url', true);
-        if ($bunny_video_url) {
+        $videoMetadata = $this->metadataManager->getVideoMetadata($post_id);
+        if (!empty($videoMetadata['videoUrl'])) {
             return; // Already processed
         }
 
@@ -91,10 +99,10 @@ class BunnyMediaLibrary {
             return;
         }
 
-        $this->metadataManager->updatePostVideoMetadata($post_id, [
+        $this->metadataManager->storeVideoMetadata($post_id, [
             'source' => 'bunnycdn',
-            'source_bunnynet' => $bunny_video_url['playbackUrl'],
-            'video_id' => $bunny_video_id,
+            'videoUrl' => $bunny_video_url['playbackUrl'],
+            'videoGuid' => $bunny_video_id,
         ]);
     }
 }
