@@ -31,6 +31,10 @@ class BunnyApiInstance {
     }
 }
 
+register_activation_hook(__FILE__, function () {
+    WP_BunnyStream\Integration\BunnyDatabaseManager::createCollectionsTable();
+});
+
 /**
  * Initialize the plugin.
  */
@@ -46,42 +50,71 @@ add_action('plugins_loaded', 'wp_bunnystream_init');
  * Enqueue admin scripts for Bunny.net integration.
  */
 function wp_bunnystream_enqueue_admin_scripts($hook) {
-    if ('upload.php' === $hook || 'post.php' === $hook || 'post-new.php' === $hook) {
+    // Load admin scripts on the Bunny Stream settings page
+    if ('settings_page_bunny-net-settings' === $hook) {
+        wp_enqueue_script(
+            'bunny-admin-script',
+            plugin_dir_url(__FILE__) . 'assets/js/bunny-admin.js',
+            ['jquery'],
+            null,
+            true
+        );
+
+        wp_localize_script('bunny-admin-script', 'bunnyAdminVars', [
+            'ajaxurl' => admin_url('admin-ajax.php'),
+            'nonce'   => wp_create_nonce('bunny_nonce'),
+        ]);
+    }
+
+    // Load video upload scripts for Media Library & post editor pages
+    if (in_array($hook, ['upload.php', 'post.php', 'post-new.php'])) {
         wp_enqueue_script(
             'bunny-video-upload',
             plugin_dir_url(__FILE__) . 'assets/js/bunny-video-upload.js',
             ['jquery'],
-            '1.0.0',
+            null,
             true
         );
 
+        // Ensure BunnyApi is initialized
+        $bunny_api = WP_BunnyStream\Integration\BunnyApi::getInstance();
+
         wp_localize_script('bunny-video-upload', 'bunnyUploadVars', [
-    'ajaxurl' => admin_url('admin-ajax.php'),
-    'nonce'   => wp_create_nonce('bunny_nonce'), // Match check_ajax_referer()
-]);
+            'ajaxurl'     => admin_url('admin-ajax.php'),
+            'nonce'       => wp_create_nonce('bunny_nonce'),
+            'maxFileSize' => WP_BunnyStream\Integration\BunnyApi::MAX_FILE_SIZE,
+        ]);
     }
 }
 add_action('admin_enqueue_scripts', 'wp_bunnystream_enqueue_admin_scripts');
 
 /**
- * Enqueue frontend scripts for Bunny.net video uploads.
+ * Enqueue scripts for Bunny.net video uploads on the frontend for Tutor LMS integration.
  */
 function enqueue_bunny_frontend_scripts() {
-    if (is_admin()) {
-        return; // Don't load in WP Admin
+    // Ensure the function is available
+    include_once( ABSPATH . 'wp-admin/includes/plugin.php' );
+
+    // Check if Tutor LMS is active
+    if (!is_plugin_active('tutor/tutor.php')) {
+        return;
     }
 
     wp_enqueue_script(
-        'bunny-frontend-script',
-        plugin_dir_url(__FILE__) . 'assets/js/bunny-frontend.js',
+        'bunny-video-upload',
+        plugin_dir_url(__FILE__) . 'assets/js/bunny-video-upload.js',
         ['jquery'],
         null,
         true
     );
 
-    wp_localize_script('bunny-frontend-script', 'bunnyUploadVars', [
-        'ajaxurl' => admin_url('admin-ajax.php'),
-        'nonce'   => wp_create_nonce('bunny_nonce'),
+    // Ensure BunnyApi is initialized
+    $bunny_api = WP_BunnyStream\Integration\BunnyApi::getInstance();
+
+    wp_localize_script('bunny-video-upload', 'bunnyUploadVars', [
+        'ajaxurl'     => admin_url('admin-ajax.php'),
+        'nonce'       => wp_create_nonce('bunny_nonce'),
+        'maxFileSize' => WP_BunnyStream\Integration\BunnyApi::MAX_FILE_SIZE,
     ]);
 }
 add_action('wp_enqueue_scripts', 'enqueue_bunny_frontend_scripts');

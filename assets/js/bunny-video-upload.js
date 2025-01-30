@@ -18,7 +18,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const file = fileInput.files[0];
     const allowedTypes = ["video/mp4", "video/webm"];
-    const maxFileSize = 500 * 1024 * 1024; // 500MB limit
+    const maxFileSize = bunnyUploadVars.maxFileSize;
 
     if (!allowedTypes.includes(file.type)) {
       alert("Invalid file type. Please upload an MP4 or WebM video.");
@@ -35,15 +35,10 @@ document.addEventListener("DOMContentLoaded", function () {
     formData.append("video", file);
     formData.append("security", bunnyUploadVars.nonce); // Include nonce for security
 
-    // Check if additional metadata like post ID or collection ID is needed
+    // Check if additional metadata like post ID is needed
     const postId = uploadButton.dataset.postId;
     if (postId) {
       formData.append("post_id", postId);
-    }
-
-    const collectionId = uploadButton.dataset.collectionId;
-    if (collectionId) {
-      formData.append("collection_id", collectionId);
     }
 
     // Display loading message

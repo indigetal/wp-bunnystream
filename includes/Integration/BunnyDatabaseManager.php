@@ -75,32 +75,21 @@ class BunnyDatabaseManager {
      * Create the collections table for storing user-collection associations.
      * Supports multisite environments.
      */
-    public static function createCollectionsTable($networkWide = false) {
+    public static function createCollectionsTable() {
         global $wpdb;
-
-        if ($networkWide && is_multisite()) {
-            // Create a single network-wide table
-            $table_name = $wpdb->base_prefix . 'bunny_collections';
-        } else {
-            // Create a site-specific table
-            $table_name = $wpdb->prefix . 'bunny_collections';
-        }
-
+        $table_name = $wpdb->prefix . 'bunny_collections';
+    
         $charset_collate = $wpdb->get_charset_collate();
-
-        $sql = "CREATE TABLE $table_name (
-            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+        $sql = "CREATE TABLE IF NOT EXISTS $table_name (
+            id BIGINT(20) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             user_id BIGINT(20) UNSIGNED NOT NULL,
             collection_id VARCHAR(255) NOT NULL,
-            library_id VARCHAR(255) DEFAULT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (id),
-            KEY user_id (user_id)
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         ) $charset_collate;";
-
+    
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
         dbDelta($sql);
-    }
+    }    
 
     /**
      * Retrieve the collection ID associated with a user.
