@@ -54,10 +54,18 @@ class BunnyMediaLibrary {
 
             if (!$collection_id) {
                 $response = $this->bunnyApi->createCollection($collectionName, [], $user_id);
-                if (is_wp_error($response) || empty($response['id'])) {
-                    error_log('Failed to create Bunny.net collection: ' . ($response->get_error_message() ?? 'Unknown error'));
+                error_log('Bunny API Collection Creation Response: ' . print_r($response, true));
+
+                if (is_wp_error($response)) {
+                    error_log('Failed to create Bunny.net collection: ' . $response->get_error_message());
                     return $upload;
                 }
+                
+                if (!isset($response['id'])) {
+                    error_log('Failed to create Bunny.net collection: API response did not include an ID.');
+                    return $upload;
+                }
+                
                 $collection_id = $response['id'];
                 $this->databaseManager->storeUserCollection($user_id, $collection_id);
             }

@@ -107,7 +107,7 @@ class BunnyApi {
         return new \WP_Error('api_failure', __('Bunny.net API failed after multiple attempts.', 'wp-bunnystream'));
     }
 
-    private function findCollectionByName($collectionName) {
+    public function findCollectionByName($collectionName) {
         $library_id = $this->getLibraryId();
         $endpoint = "library/{$library_id}/collections";
         $response = $this->sendJsonToBunny($endpoint, 'GET');
