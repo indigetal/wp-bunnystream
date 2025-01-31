@@ -208,9 +208,14 @@ class BunnyApi {
      * @return array|WP_Error The API response or WP_Error on failure.
      */
     public function getVideoPlaybackUrl($videoId) {
-        $endpoint = "videos/{$videoId}/playback";
-        return $this->sendJsonToBunny($endpoint, 'GET', []);
-    }
+        $library_id = $this->getLibraryId();
+        if (empty($library_id)) {
+            return new \WP_Error('missing_library_id', __('Library ID is required to fetch playback URL.', 'wp-bunnystream'));
+        }
+    
+        $endpoint = "library/{$library_id}/videos/{$videoId}";
+        return $this->sendJsonToBunny($endpoint, 'GET');
+    }    
 
     /**
      * Delete a collection by its ID.
@@ -305,42 +310,34 @@ class BunnyApi {
             return new \WP_Error('invalid_file_path', __('Invalid file path for video upload.', 'wp-bunnystream'));
         }
     
-        // Read the file contents
-        $fileData = file_get_contents($filePath);
-        if ($fileData === false) {
-            return new \WP_Error('file_read_error', __('Failed to read the video file.', 'wp-bunnystream'));
+        // Step 1: Create a new video object
+        $videoObjectResponse = $this->sendJsonToBunny("library/{$library_id}/videos", 'POST', [
+            'title' => basename($filePath),
+        ]);
+    
+        if (is_wp_error($videoObjectResponse) || empty($videoObjectResponse['guid'])) {
+            return new \WP_Error('video_creation_failed', __('Failed to create video object.', 'wp-bunnystream'));
         }
     
-        // Validate file size
-        $fileSize = strlen($fileData); // file_get_contents() loads into memory, so we use strlen()
-        if ($fileSize > self::MAX_FILE_SIZE) {
-            return new \WP_Error('file_too_large', __('File exceeds maximum allowed size of 500MB.', 'wp-bunnystream'));
-        }
+        $videoId = $videoObjectResponse['guid']; // Retrieve video ID from response
     
-        // Validate MIME type
-        $mimeValidation = $this->validateMimeType($filePath);
-        if (is_wp_error($mimeValidation)) {
-            return $mimeValidation;
-        }
+        // Step 2: Upload the video file using PUT request
+        $uploadEndpoint = "library/{$library_id}/videos/{$videoId}";
     
-        // Upload video to Bunny.net
-        $endpoint = "library/{$library_id}/videos" . ($collectionId ? "?collection={$collectionId}" : "");
-    
-        $videoBaseUrl = $this->video_base_url;
-        $uploadResponse = $this->retryApiCall(function() use ($endpoint, $fileData, $videoBaseUrl) {
+        $uploadResponse = $this->retryApiCall(function() use ($uploadEndpoint, $filePath) {
             $headers = [
                 'AccessKey' => $this->access_key,
                 'Content-Type' => 'application/octet-stream',
             ];
     
             $args = [
-                'method' => 'POST',
+                'method' => 'PUT', // Correct HTTP method for video upload
                 'headers' => $headers,
-                'body' => $fileData, // Use file contents instead of file handle
+                'body' => file_get_contents($filePath), // Ensure raw binary data is sent
                 'timeout' => 300,
             ];
     
-            $url = $this->video_base_url . ltrim($endpoint, '/');
+            $url = $this->video_base_url . ltrim($uploadEndpoint, '/');
             $response = wp_remote_request($url, $args);
     
             if (is_wp_error($response)) {
@@ -353,20 +350,18 @@ class BunnyApi {
             if ($response_code < 200 || $response_code >= 300) {
                 return new \WP_Error(
                     'bunny_api_http_error',
-                    sprintf(__('HTTP Error %d: %s (Endpoint: %s)', 'wp-bunnystream'), $response_code, $response_body, $endpoint)
+                    sprintf(__('HTTP Error %d: %s (Endpoint: %s)', 'wp-bunnystream'), $response_code, $response_body, $uploadEndpoint)
                 );
             }
     
             return json_decode($response_body, true);
         });
     
-        if (is_wp_error($uploadResponse) || empty($uploadResponse['id'])) {
+        if (is_wp_error($uploadResponse)) {
             return new \WP_Error('upload_failed', __('Failed to upload video to Bunny.net.', 'wp-bunnystream'));
         }
     
-        $videoId = $uploadResponse['id'];
-    
-        // Retrieve playback URL
+        // Step 3: Retrieve playback URL
         $playbackResponse = $this->getVideoPlaybackUrl($videoId);
         if (is_wp_error($playbackResponse) || empty($playbackResponse['playbackUrl'])) {
             return new \WP_Error('playback_url_error', __('Failed to retrieve video playback URL.', 'wp-bunnystream'));
@@ -374,7 +369,45 @@ class BunnyApi {
     
         return [
             'videoId' => $videoId,
-            'videoUrl' => $playbackResponse['playbackUrl']
+            'videoUrl' => $playbackResponse['playbackUrl'],
         ];
-    }             
+    }   
+    
+    /**
+     * Set a thumbnail for a video in Bunny.net.
+     *
+     * @param string $videoId The ID of the video.
+     * @param int|null $timestamp (Optional) The timestamp (in seconds) from which to generate the thumbnail.
+     * @return bool|WP_Error True on success, WP_Error on failure.
+     */
+    public function setThumbnail($videoId, $timestamp = null) {
+        $library_id = $this->getLibraryId();
+        if (empty($library_id)) {
+            return new \WP_Error('missing_library_id', __('Library ID is required to set a thumbnail.', 'wp-bunnystream'));
+        }
+
+        if (empty($videoId)) {
+            return new \WP_Error('missing_video_id', __('Video ID is required to set a thumbnail.', 'wp-bunnystream'));
+        }
+
+        // Construct the endpoint
+        $endpoint = "library/{$library_id}/videos/{$videoId}/thumbnail";
+
+        // Prepare data (optional timestamp)
+        $data = [];
+        if (!is_null($timestamp)) {
+            $data['time'] = $timestamp; // Bunny.net allows selecting a timestamp
+        }
+
+        // Send API request
+        $response = $this->sendJsonToBunny($endpoint, 'POST', $data);
+
+        if (is_wp_error($response)) {
+            error_log('Bunny API Error: Failed to set video thumbnail: ' . $response->get_error_message());
+            return $response;
+        }
+
+        return true; // Successfully set the thumbnail
+    }
+                 
 }

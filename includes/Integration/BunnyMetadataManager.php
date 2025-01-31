@@ -7,6 +7,31 @@ if (!defined('ABSPATH')) {
 
 class BunnyMetadataManager {
     /**
+     * Store Bunny.net thumbnail URL for a video and set it via API.
+     *
+     * @param int    $postId       The post ID of the video attachment.
+     * @param string $videoId      The Bunny.net video ID.
+     * @param string $thumbnailUrl The URL of the Bunny.net-generated thumbnail.
+     */
+    public function storeBunnyVideoThumbnail($postId, $videoId, $thumbnailUrl) {
+        if (empty($postId) || empty($videoId) || empty($thumbnailUrl)) {
+            error_log('BunnyMetadataManager: Missing post ID, video ID, or thumbnail URL.');
+            return;
+        }
+
+        // Store the thumbnail in WordPress metadata
+        update_post_meta($postId, '_bunny_thumbnail_url', esc_url($thumbnailUrl));
+
+        // Set the thumbnail on Bunny.net via API
+        $bunnyApi = new \WP_BunnyStream\Integration\BunnyApi();
+        $setThumbnailResponse = $bunnyApi->setThumbnail($videoId);
+
+        if (is_wp_error($setThumbnailResponse)) {
+            error_log('BunnyMetadataManager: Failed to set Bunny.net thumbnail: ' . $setThumbnailResponse->get_error_message());
+        }
+    }
+
+    /**
      * Store or update video metadata for posts or media library items.
      *
      * @param int   $id        The WordPress post ID or attachment ID.
@@ -27,8 +52,8 @@ class BunnyMetadataManager {
         }
 
         // Validate required keys
-        if (!isset($videoData['source'])) {
-            error_log('BunnyMetadataManager: Missing video source.');
+        if (!isset($videoData['source']) || !isset($videoData['videoId'])) {
+            error_log('BunnyMetadataManager: Missing video source or video ID.');
             return false;
         }
 
@@ -46,21 +71,17 @@ class BunnyMetadataManager {
             return false;
         }
 
-        return true;
-    }
+        // Automatically attempt to set the Bunny.net thumbnail
+        if (!empty($videoData['videoId'])) {
+            $bunnyApi = new \WP_BunnyStream\Integration\BunnyApi();
+            $setThumbnailResponse = $bunnyApi->setThumbnail($videoData['videoId']);
 
-    /**
-     * Store Bunny.net thumbnail URL for a video.
-     *
-     * @param int    $postId       The post ID of the video attachment.
-     * @param string $thumbnailUrl The URL of the Bunny.net-generated thumbnail.
-     */
-    public function storeBunnyVideoThumbnail($postId, $thumbnailUrl) {
-        if (empty($postId) || empty($thumbnailUrl)) {
-            error_log('BunnyMetadataManager: Missing post ID or thumbnail URL.');
-            return;
+            if (is_wp_error($setThumbnailResponse)) {
+                error_log('BunnyMetadataManager: Failed to set Bunny.net thumbnail: ' . $setThumbnailResponse->get_error_message());
+            }
         }
-        update_post_meta($postId, '_bunny_thumbnail_url', esc_url($thumbnailUrl));
+
+        return true;
     }
 
     /**

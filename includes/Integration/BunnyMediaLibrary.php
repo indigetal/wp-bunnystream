@@ -79,6 +79,8 @@ class BunnyMediaLibrary {
             }
         }
 
+        error_log("Bunny API Debug: Preparing to upload video file: " . $filePath);
+
         // Upload video to Bunny.net
         $uploadResponse = $this->bunnyApi->uploadVideo($upload['file'], $collection_id);
         if (is_wp_error($uploadResponse)) {
