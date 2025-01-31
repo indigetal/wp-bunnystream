@@ -20,7 +20,6 @@ class BunnyUserIntegration {
         $this->databaseManager = new BunnyDatabaseManager();
 
         // Hook into user actions
-        add_action('wp_bunny_video_upload', [$this, 'handleVideoUpload'], 10, 2);
         add_action('delete_user', [$this, 'handleUserDeletion']);
     }
 
@@ -53,52 +52,6 @@ class BunnyUserIntegration {
             'file' => $request['file'],
             'post_id' => $postId,
         ];
-    }
-
-    /**
-     * Handle video upload by instructors.
-     * Create a Bunny.net collection for the user if it does not exist.
-     * Store metadata after successful upload.
-     *
-     * @param int $userId The ID of the user uploading the video.
-     * @param string $videoPath The path to the uploaded video.
-     */
-    public function handleVideoUpload($userId, $videoPath) {
-        $collectionId = $this->databaseManager->getUserCollectionId($userId);
-    
-        if (!$collectionId) {
-            // No collection exists for the user, create one.
-            $collectionName = "User_Collection_{$userId}";
-            $response = $this->bunnyApi->createCollection($collectionName);
-    
-            if (is_wp_error($response)) {
-                error_log('Failed to create collection for user ' . $userId . ': ' . $response->get_error_message());
-                return;
-            }
-    
-            $collectionId = $response['id'];
-            $this->databaseManager->storeUserCollection($userId, $collectionId);
-        }
-    
-        // Upload video
-        $uploadResponse = $this->bunnyApi->uploadVideo($videoPath, $collectionId);
-        if (is_wp_error($uploadResponse)) {
-            error_log('Video upload failed for user ' . $userId . ': ' . $uploadResponse->get_error_message());
-            return;
-        }
-
-        $videoId = $uploadResponse['videoId'];
-        $videoUrl = $uploadResponse['videoUrl'] ?? '';
-    
-        // Store Bunny.net metadata
-        $this->metadataManager->storeVideoMetadata($userId, [
-            'source' => 'bunnycdn',
-            'videoUrl' => $videoUrl,
-            'collectionId' => $collectionId,
-            'videoGuid' => $videoId,
-        ]);
-    
-        error_log("Video uploaded by user {$userId} added to collection {$collectionId}.");
     }
     
     /**

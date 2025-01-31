@@ -39,15 +39,12 @@ class BunnyMediaLibrary {
         // Check if user already has a Bunny.net collection
         $collection_id = $this->databaseManager->getUserCollectionId($user_id);
         if (!$collection_id) {
-            $collectionName = "User_Collection_{$user_id}";
+            $collectionName = "wpbs_uid_{$user_id}";
 
             // Check if collection already exists before creating a new one
-            $existingCollections = $this->bunnyApi->getCollections();
-            foreach ($existingCollections as $collection) {
-                if ($collection['name'] === $collectionName) {
-                    $collection_id = $collection['id'];
-                    break;
-                }
+            $existingCollection = $this->bunnyApi->getCollection($collectionName);
+            if (!is_wp_error($existingCollection) && isset($existingCollection['id'])) {
+                $collection_id = $existingCollection['id'];
             }
 
             if (!$collection_id) {

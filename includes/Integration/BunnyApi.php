@@ -115,27 +115,35 @@ class BunnyApi {
         if (empty($library_id)) {
             return new \WP_Error('missing_library_id', __('Library ID is required to create a collection.', 'wp-bunnystream'));
         }
-
+    
         if (empty($collectionName)) {
             return new \WP_Error('missing_collection_name', __('Collection name is required.', 'wp-bunnystream'));
         }
-
+    
+        // Since we know the collection name format, construct the collection ID and check if it exists
+        $collectionId = "wpbs_uid_{$userId}";
+        $existingCollection = $this->getCollection($collectionId);
+    
+        if (!is_wp_error($existingCollection) && isset($existingCollection['id'])) {
+            return $existingCollection; // Return existing collection if found
+        }
+    
+        // Collection does not exist, so create it
         $endpoint = "library/{$library_id}/collections";
         $data = array_merge(['name' => $collectionName], $additionalData);
-
         $response = $this->sendJsonToBunny($endpoint, 'POST', $data);
-
-        if (is_wp_error($response)) {
-            return $response;
+    
+        if (is_wp_error($response) || empty($response['id'])) {
+            return new \WP_Error('collection_creation_failed', __('Failed to create or retrieve collection.', 'wp-bunnystream'));
         }
-
-        if (!empty($response['id']) && $userId) {
+    
+        if ($userId) {
             $dbManager = new \WP_BunnyStream\Integration\BunnyDatabaseManager();
             $dbManager->storeUserCollection($userId, $response['id']);
         }
-
-        return isset($response['id']) ? $response : new \WP_Error('collection_creation_failed', __('Failed to create collection.', 'wp-bunnystream'));
-    }
+    
+        return $response;
+    }    
 
     /**
      * Create a new video object in Bunny.net.
