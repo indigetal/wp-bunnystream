@@ -61,7 +61,10 @@ class BunnyUserIntegration {
      * @param int $userId The ID of the user being deleted.
      */
     public function handleUserDeletion($userId) {
-        $collectionId = $this->databaseManager->getUserCollectionId($userId);
+        $user = get_userdata($userId);
+        $username = $user ? sanitize_title($user->user_login) : "user_{$userId}";
+        $collectionName = "wpbs_{$username}";
+        $collectionId = $this->databaseManager->getCollectionByName($collectionName);
 
         if ($collectionId) {
             $response = $this->bunnyApi->deleteCollection($collectionId);

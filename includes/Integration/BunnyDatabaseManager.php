@@ -96,44 +96,76 @@ class BunnyDatabaseManager {
      */
     public function getUserCollectionId($userId, $networkWide = false) {
         global $wpdb;
-
+    
         $table_name = $networkWide && is_multisite()
             ? $wpdb->base_prefix . 'bunny_collections'
             : $wpdb->prefix . 'bunny_collections';
-
+    
         $collection_id = $wpdb->get_var($wpdb->prepare(
             "SELECT collection_id FROM $table_name WHERE user_id = %d LIMIT 1",
             $userId
         ));
-
+    
+        if (!$collection_id) {
+            error_log("BunnyDatabaseManager: No collection found for user ID {$userId}.");
+        }
+    
         return $collection_id ?: null;
-    }
+    }    
 
     /**
      * Store a user-to-collection association.
      */
     public function storeUserCollection($userId, $collectionId, $networkWide = false) {
         global $wpdb;
-
+    
         $table_name = $networkWide && is_multisite()
             ? $wpdb->base_prefix . 'bunny_collections'
             : $wpdb->prefix . 'bunny_collections';
-
-        // Check if collection already exists before inserting
-        if ($this->getUserCollectionId($userId, $networkWide)) {
-            return;
+    
+        $existingCollection = $this->getUserCollectionId($userId, $networkWide);
+    
+        if ($existingCollection) {
+            // Update the collection instead of ignoring the new one
+            $wpdb->update(
+                $table_name,
+                ['collection_id' => $collectionId, 'created_at' => current_time('mysql')],
+                ['user_id' => $userId],
+                ['%s', '%s'],
+                ['%d']
+            );
+        } else {
+            // If no collection exists, insert a new record
+            $wpdb->insert(
+                $table_name,
+                [
+                    'user_id' => $userId,
+                    'collection_id' => $collectionId,
+                    'created_at' => current_time('mysql'),
+                ],
+                ['%d', '%s', '%s']
+            );
         }
+    }    
 
-        $wpdb->insert(
-            $table_name,
-            [
-                'user_id' => $userId,
-                'collection_id' => $collectionId,
-                'created_at' => current_time('mysql'),
-            ],
-            ['%d', '%s', '%s']
-        );
-    }
+    public function getCollectionByName($collectionName, $networkWide = false) {
+        global $wpdb;
+    
+        $table_name = $networkWide && is_multisite()
+            ? $wpdb->base_prefix . 'bunny_collections'
+            : $wpdb->prefix . 'bunny_collections';
+    
+        $collection_id = $wpdb->get_var($wpdb->prepare(
+            "SELECT collection_id FROM $table_name WHERE collection_id = %s LIMIT 1",
+            $collectionName
+        ));
+    
+        if (!$collection_id) {
+            error_log("BunnyDatabaseManager: No collection found for name {$collectionName}.");
+        }
+    
+        return $collection_id ?: null;
+    }        
 
     /**
      * Delete the collection record associated with a user.

@@ -105,25 +105,6 @@ class BunnyApi {
             $attempt++;
         }
         return new \WP_Error('api_failure', __('Bunny.net API failed after multiple attempts.', 'wp-bunnystream'));
-    }
-
-    public function findCollectionByName($collectionName) {
-        $library_id = $this->getLibraryId();
-        $endpoint = "library/{$library_id}/collections";
-        $response = $this->sendJsonToBunny($endpoint, 'GET');
-    
-        if (is_wp_error($response)) {
-            return null;
-        }
-    
-        // Step 3: Search for the collection by its name
-        foreach ($response['items'] as $collection) {
-            if ($collection['name'] === $collectionName) {
-                return $collection;
-            }
-        }
-    
-        return null; // Collection does not exist
     }    
 
     /**
@@ -144,28 +125,43 @@ class BunnyApi {
             return new \WP_Error('missing_collection_name', __('Collection name is required.', 'wp-bunnystream'));
         }
     
-        // Step 1: Check if a collection with the given name already exists
-        $existingCollection = $this->findCollectionByName($collectionName);
+        // Step 1: Check if the collection exists in the local database first
+        $dbManager = new \WP_BunnyStream\Integration\BunnyDatabaseManager();
+        $existingCollection = $dbManager->getCollectionByName($collectionName);
+
         if ($existingCollection) {
-            return $existingCollection; // Return existing collection if found
+            // Double-check that the collection exists on Bunny.net
+            $apiCheck = $this->getCollection($existingCollection);
+            if (!is_wp_error($apiCheck)) {
+                return $existingCollection; // Collection exists on Bunny, return it
+            }
+            error_log("Bunny API Warning: Local database references a collection that does not exist on Bunny.net. Recreating...");
         }
     
-        // Step 2: Collection does not exist, create it
+        // Step 2: Collection does not exist in the database, create it on Bunny.net
         $endpoint = "library/{$library_id}/collections";
         $data = array_merge(['name' => $collectionName], $additionalData);
+        
+        error_log("Bunny API Collection Creation Request: " . print_r($data, true));
         $response = $this->sendJsonToBunny($endpoint, 'POST', $data);
     
-        if (is_wp_error($response) || empty($response['id'])) {
-            return new \WP_Error('collection_creation_failed', __('Failed to create or retrieve collection.', 'wp-bunnystream'));
+        if (is_wp_error($response)) {
+            error_log('Bunny API Error: Failed to create collection: ' . $response->get_error_message());
+            return $response;
         }
     
+        if (!isset($response['guid'])) { // Bunny.net returns 'guid', not 'id'
+            error_log('Bunny API Error: API response did not include a GUID.');
+            return new \WP_Error('collection_creation_failed', __('Failed to retrieve collection GUID after creation.', 'wp-bunnystream'));
+        }
+    
+        // Step 3: Store the new collection in the local database
         if ($userId) {
-            $dbManager = new \WP_BunnyStream\Integration\BunnyDatabaseManager();
-            $dbManager->storeUserCollection($userId, $response['id']);
+            $dbManager->storeUserCollection($userId, $response['guid']);
         }
     
-        return $response;
-    }        
+        return $response['guid'];
+    }                
 
     /**
      * Create a new video object in Bunny.net.
@@ -296,12 +292,18 @@ class BunnyApi {
             return new \WP_Error('missing_library_id', __('Library ID is required to upload a video.', 'wp-bunnystream'));
         }
     
-        if (!file_exists($filePath)) {
-            return new \WP_Error('file_not_found', __('The video file does not exist.', 'wp-bunnystream'));
+        if (!is_string($filePath) || !file_exists($filePath)) {
+            return new \WP_Error('invalid_file_path', __('Invalid file path for video upload.', 'wp-bunnystream'));
+        }
+    
+        // Read the file contents
+        $fileData = file_get_contents($filePath);
+        if ($fileData === false) {
+            return new \WP_Error('file_read_error', __('Failed to read the video file.', 'wp-bunnystream'));
         }
     
         // Validate file size
-        $fileSize = filesize($filePath);
+        $fileSize = strlen($fileData); // file_get_contents() loads into memory, so we use strlen()
         if ($fileSize > self::MAX_FILE_SIZE) {
             return new \WP_Error('file_too_large', __('File exceeds maximum allowed size of 500MB.', 'wp-bunnystream'));
         }
@@ -316,12 +318,7 @@ class BunnyApi {
         $endpoint = "library/{$library_id}/videos" . ($collectionId ? "?collection={$collectionId}" : "");
     
         $videoBaseUrl = $this->video_base_url;
-        $uploadResponse = $this->retryApiCall(function() use ($endpoint, $filePath, $videoBaseUrl) {
-            $fileHandle = fopen($filePath, 'r');
-            if (!$fileHandle) {
-                return new \WP_Error('file_error', __('Unable to open the video file for reading.', 'wp-bunnystream'));
-            }
-    
+        $uploadResponse = $this->retryApiCall(function() use ($endpoint, $fileData, $videoBaseUrl) {
             $headers = [
                 'AccessKey' => $this->access_key,
                 'Content-Type' => 'application/octet-stream',
@@ -330,13 +327,12 @@ class BunnyApi {
             $args = [
                 'method' => 'POST',
                 'headers' => $headers,
-                'body' => $fileHandle,
+                'body' => $fileData, // Use file contents instead of file handle
                 'timeout' => 300,
             ];
     
             $url = $this->video_base_url . ltrim($endpoint, '/');
             $response = wp_remote_request($url, $args);
-            fclose($fileHandle);
     
             if (is_wp_error($response)) {
                 return $response;
@@ -371,5 +367,5 @@ class BunnyApi {
             'videoId' => $videoId,
             'videoUrl' => $playbackResponse['playbackUrl']
         ];
-    }         
+    }             
 }

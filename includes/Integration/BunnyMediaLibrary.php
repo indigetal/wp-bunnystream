@@ -44,28 +44,37 @@ class BunnyMediaLibrary {
         // Check if user already has a Bunny.net collection
         $collection_id = $this->databaseManager->getUserCollectionId($user_id);
         if (!$collection_id) {
-            $collectionName = "wpbs_uid_{$user_id}";
+            $user = get_userdata($user_id);
+            $username = $user ? sanitize_title($user->user_login) : "user_{$user_id}";
+            $collectionName = "wpbs_{$username}";
 
             // Check if collection already exists before creating a new one
-            $existingCollection = $this->bunnyApi->findCollectionByName($collectionName);
+            $existingCollection = $this->databaseManager->getCollectionByName($collectionName);
             if ($existingCollection) {
-                $collection_id = $existingCollection['id'];
-            }
+                // Verify that the collection actually exists on Bunny.net
+                $apiCheck = $this->bunnyApi->getCollection($existingCollection);
+                if (!is_wp_error($apiCheck)) {
+                    $collection_id = $existingCollection; // Use database value if Bunny.net confirms its existence
+                } else {
+                    error_log("Bunny API Warning: Local database references a collection that does not exist on Bunny.net. Recreating...");
+                }
+            }            
 
-            if (!$collection_id) {
-                $response = $this->bunnyApi->createCollection($collectionName, [], $user_id);
+            if (!$collection_id || is_wp_error($apiCheck)) {
+                $response = $this->bunnyApi->createCollection($collectionName, [], $user_id);            
                 error_log('Bunny API Collection Creation Response: ' . print_r($response, true));
 
                 if (is_wp_error($response)) {
                     error_log('Failed to create Bunny.net collection: ' . $response->get_error_message());
                     return $upload;
                 }
-                
+
                 if (!isset($response['guid'])) {
                     error_log('Failed to create Bunny.net collection: API response did not include a GUID.');
                     return $upload;
                 }
-                $collection_id = $response['guid'];                
+
+                $collection_id = $response['guid'];
                 $this->databaseManager->storeUserCollection($user_id, $collection_id);
             }
         }
