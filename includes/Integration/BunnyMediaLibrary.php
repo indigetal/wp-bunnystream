@@ -36,19 +36,24 @@ class BunnyMediaLibrary {
             return $upload; // User must be logged in to upload
         }
 
+        if (empty($user_id)) {
+            error_log("Bunny API Error: Attempted to create a collection with an empty user ID.");
+            return new \WP_Error('missing_user_id', __('User ID is required to create a collection.', 'wp-bunnystream'));
+        }
+
         // Check if user already has a Bunny.net collection
         $collection_id = $this->databaseManager->getUserCollectionId($user_id);
         if (!$collection_id) {
             $collectionName = "wpbs_uid_{$user_id}";
 
             // Check if collection already exists before creating a new one
-            $existingCollection = $this->bunnyApi->getCollection($collectionName);
-            if (!is_wp_error($existingCollection) && isset($existingCollection['id'])) {
+            $existingCollection = $this->bunnyApi->findCollectionByName($collectionName);
+            if ($existingCollection) {
                 $collection_id = $existingCollection['id'];
             }
 
             if (!$collection_id) {
-                $response = $this->bunnyApi->createCollection($collectionName);
+                $response = $this->bunnyApi->createCollection($collectionName, [], $user_id);
                 if (is_wp_error($response) || empty($response['id'])) {
                     error_log('Failed to create Bunny.net collection: ' . ($response->get_error_message() ?? 'Unknown error'));
                     return $upload;

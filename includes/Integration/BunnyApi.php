@@ -77,22 +77,15 @@ class BunnyApi {
             if ($response_code < 200 || $response_code >= 300) {
                 error_log("Bunny API Error: Failed Request to $endpoint");
 
-                if (isset($headers)) {
-                    error_log("Headers: " . print_r($headers, true));
-                } else {
-                    error_log("Headers: Undefined");
-                }
-                if (isset($method)) {
-                    error_log("Method: " . $method);
-                } else {
-                    error_log("Method: Undefined");
-                }
+                error_log("Headers: " . (!empty($args['headers']) ? print_r($args['headers'], true) : 'Undefined'));
+                error_log("Method: " . (!empty($args['method']) ? $args['method'] : 'Undefined'));
 
-                if (isset($data)) {
-                    error_log("Request Body: " . json_encode($data));
+                if (isset($args['body'])) {
+                    error_log("Request Body: " . json_encode($args['body']));
                 } else {
                     error_log("Request Body: Undefined");
                 }
+
             }                                    
             return json_decode($response_body, true);
         });
@@ -114,6 +107,25 @@ class BunnyApi {
         return new \WP_Error('api_failure', __('Bunny.net API failed after multiple attempts.', 'wp-bunnystream'));
     }
 
+    private function findCollectionByName($collectionName) {
+        $library_id = $this->getLibraryId();
+        $endpoint = "library/{$library_id}/collections";
+        $response = $this->sendJsonToBunny($endpoint, 'GET');
+    
+        if (is_wp_error($response)) {
+            return null;
+        }
+    
+        // Step 3: Search for the collection by its name
+        foreach ($response['items'] as $collection) {
+            if ($collection['name'] === $collectionName) {
+                return $collection;
+            }
+        }
+    
+        return null; // Collection does not exist
+    }    
+
     /**
      * Create a new collection within a library.
      *
@@ -132,20 +144,13 @@ class BunnyApi {
             return new \WP_Error('missing_collection_name', __('Collection name is required.', 'wp-bunnystream'));
         }
     
-        // Since we know the collection name format, construct the collection ID and check if it exists
-        if (empty($userId)) {
-            return new \WP_Error('missing_user_id', __('User ID is required to create a collection.', 'wp-bunnystream'));
-        }
-
-        $collectionId = "wpbs_uid_{$userId}";
-
-        $existingCollection = $this->getCollection($collectionId);
-    
-        if (!is_wp_error($existingCollection) && isset($existingCollection['id'])) {
+        // Step 1: Check if a collection with the given name already exists
+        $existingCollection = $this->findCollectionByName($collectionName);
+        if ($existingCollection) {
             return $existingCollection; // Return existing collection if found
         }
     
-        // Collection does not exist, so create it
+        // Step 2: Collection does not exist, create it
         $endpoint = "library/{$library_id}/collections";
         $data = array_merge(['name' => $collectionName], $additionalData);
         $response = $this->sendJsonToBunny($endpoint, 'POST', $data);
@@ -160,7 +165,7 @@ class BunnyApi {
         }
     
         return $response;
-    }    
+    }        
 
     /**
      * Create a new video object in Bunny.net.
