@@ -148,7 +148,7 @@ class BunnyDatabaseManager {
         }
     }    
 
-    public function getCollectionByName($collectionName, $networkWide = false) {
+    public function getCollectionById($collectionId, $networkWide = false) {
         global $wpdb;
     
         $table_name = $networkWide && is_multisite()
@@ -157,11 +157,11 @@ class BunnyDatabaseManager {
     
         $collection_id = $wpdb->get_var($wpdb->prepare(
             "SELECT collection_id FROM $table_name WHERE collection_id = %s LIMIT 1",
-            $collectionName
+            $collectionId
         ));
     
         if (!$collection_id) {
-            error_log("BunnyDatabaseManager: No collection found for name {$collectionName}.");
+            error_log("BunnyDatabaseManager: No collection found for ID {$collectionId}.");
         }
     
         return $collection_id ?: null;
