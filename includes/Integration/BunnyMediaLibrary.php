@@ -48,29 +48,13 @@ class BunnyMediaLibrary {
         if ( ! isset( $upload['type'] ) || strpos( $upload['type'], 'video/' ) !== 0 ) {
             return $upload;
         }
-
-        if ( ! isset( $upload['post_id'] ) ) {
-            $this->log( "Missing post_id in upload array.", 'error' );
-            return new \WP_Error( 'missing_post_id', __( 'Missing post_id for video upload.', 'wp-bunnystream' ) );
-        }
-
-        // Check if the video has already been offloaded.
-        $existingVideoId = get_post_meta( $upload['post_id'], '_bunny_video_id', true );
-        if ( $existingVideoId ) {
-            $this->log( "Skipping offload; video already offloaded (ID: {$existingVideoId}).", 'info' );
-            return $upload;
-        }
-
-        $user_id = get_current_user_id();
-        if ( ! $user_id ) {
-            // If user isn't logged in, simply return the upload unmodified.
-            return $upload;
-        }
-
-        // Delegate the offloading process to offloadVideo().
-        $result = $this->offloadVideo( $upload, $upload['post_id'], $user_id );
-        return is_wp_error( $result ) ? $upload : $result;
-    }
+    
+        // Log that offloading will be handled later.
+        $this->log( "interceptUpload: Video detected. Offloading will be handled on attachment creation.", 'info' );
+    
+        // Return the upload data unchanged.
+        return $upload;
+    }    
 
     /**
      * Offloads a video to Bunny.net with enhanced error handling and logging.
@@ -149,30 +133,55 @@ class BunnyMediaLibrary {
     /**
      * Store Bunny.net metadata when an attachment is added
      */
-    public function handleAttachmentMetadata($post_id) {
-        $videoMetadata = $this->metadataManager->getVideoMetadata($post_id);
-        if (!empty($videoMetadata['videoUrl'])) {
-            return; // Already processed
-        }
-
-        $bunny_video_id = get_post_meta($post_id, '_bunny_video_id', true);
-        if (!$bunny_video_id) {
+    public function handleAttachmentMetadata( $post_id ) {
+        // Check if this attachment is a video.
+        $mime = get_post_mime_type( $post_id );
+        if ( strpos( $mime, 'video/' ) !== 0 ) {
             return;
         }
-
-        // Fetch video URL if not already stored
-        $bunny_video_url = $this->bunnyApi->getVideoPlaybackUrl($bunny_video_id);
-        if (is_wp_error($bunny_video_url) || empty($bunny_video_url['playbackUrl'])) {
-            error_log("Warning: Playback URL not found for Video ID {$bunny_video_id}");
+    
+        // If offloading has already been done, skip.
+        $bunny_video_id = get_post_meta( $post_id, '_bunny_video_id', true );
+        if ( ! empty( $bunny_video_id ) ) {
+            $this->log( "handleAttachmentMetadata: Video already offloaded (ID: {$bunny_video_id}).", 'info' );
             return;
         }
-
-        $this->metadataManager->storeVideoMetadata($post_id, [
-            'source' => 'bunnycdn',
-            'videoUrl' => $bunny_video_url['playbackUrl'],
-            'videoGuid' => $bunny_video_id,
-        ]);
-    }
+    
+        // Retrieve the file path.
+        $filePath = get_attached_file( $post_id );
+        if ( ! $filePath || ! file_exists( $filePath ) ) {
+            $this->log( "handleAttachmentMetadata: Invalid file path for post ID {$post_id}.", 'error' );
+            return;
+        }
+    
+        // Get the user ID from the attachment post.
+        $user_id = (int) get_post_field( 'post_author', $post_id );
+        if ( ! $user_id ) {
+            $this->log( "handleAttachmentMetadata: No user found for post ID {$post_id}.", 'error' );
+            return;
+        }
+    
+        // Build a minimal upload array for offloadVideo().
+        $upload_data = [
+            'file' => $filePath,
+            // You can add additional info if needed.
+        ];
+    
+        // Call offloadVideo() to offload the video.
+        $result = $this->offloadVideo( $upload_data, $post_id, $user_id );
+        if ( is_wp_error( $result ) ) {
+            $this->log( "handleAttachmentMetadata: Offloading failed for post ID {$post_id}: " . $result->get_error_message(), 'error' );
+            return;
+        }
+    
+        // Optionally, update the attachment's URL and metadata.
+        if ( isset( $result['bunny_video_url'] ) ) {
+            // Update the attachment URL or add meta data.
+            update_post_meta( $post_id, '_bunny_video_url', $result['bunny_video_url'] );
+            update_post_meta( $post_id, '_bunny_video_id', $result['video_id'] );
+            $this->log( "handleAttachmentMetadata: Offloading succeeded for post ID {$post_id}.", 'info' );
+        }
+    }    
 }
 
 // Initialize the media library integration
