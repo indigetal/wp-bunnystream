@@ -389,102 +389,66 @@ class BunnyApi {
         if (empty($library_id)) {
             return new \WP_Error('missing_library_id', __('Library ID is required to upload a video.', 'wp-bunnystream'));
         }
-
+    
         if (!is_string($filePath) || !file_exists($filePath)) {
             return new \WP_Error('invalid_file_path', __('Invalid file path for video upload.', 'wp-bunnystream'));
         }
-
-       // Step 1: Ensure a valid collection ID exists before uploading
+    
+        // Step 1: Ensure a valid collection ID exists before uploading
         if (!$collectionId && $userId) {
-            $this->log("Collection ID missing. Checking database...", 'info');
-
-            // Retrieve stored collection ID from the database
             $collectionId = $this->databaseManager->getUserCollectionId($userId);
-
             if (!$collectionId) {
-                $this->log("No collection found for user {$userId}. Creating a new one...", 'warning');
-                $collectionName = "wpbs_{$userId}";
-                $collectionId = $this->createCollection($collectionName, [], $userId);
-
+                $collectionId = $this->createCollection("wpbs_{$userId}", [], $userId);
                 if (is_wp_error($collectionId)) {
-                    $this->log("Failed to create collection for user {$userId}: " . $collectionId->get_error_message(), 'error');
-                    return $collectionId; // Abort if collection creation fails
+                    return $collectionId;
                 }
-
-                // Store the new collection ID in the database
                 $this->databaseManager->storeUserCollection($userId, $collectionId);
-                $this->log("New collection {$collectionId} created and assigned to user {$userId}.", 'info');
             }
         }
-
-        // Step 2: Create a new video object with collectionId
-        $videoData = [
-            'title' => basename($filePath)
-        ];
-
-        // Ensure collectionId is included if available
+    
+        // Step 2: Create a new video object
+        $videoData = ['title' => basename($filePath)];
         if (!empty($collectionId)) {
             $videoData['collectionId'] = $collectionId;
         }
-
+    
         $videoObjectResponse = $this->sendJsonToBunny("library/{$library_id}/videos", 'POST', $videoData);
-
         if (is_wp_error($videoObjectResponse) || empty($videoObjectResponse['guid'])) {
             return new \WP_Error('video_creation_failed', __('Failed to create video object.', 'wp-bunnystream'));
         }
-
-        $videoId = $videoObjectResponse['guid']; // Retrieve video ID from response
-
-        // Step 3: Upload the video file
+    
+        $videoId = $videoObjectResponse['guid'];
+    
+        // Step 3: Upload the video file using a PUT request
         $uploadEndpoint = "library/{$library_id}/videos/{$videoId}";
-
         $uploadResponse = $this->retryApiCall(function() use ($uploadEndpoint, $filePath) {
             $headers = [
                 'AccessKey' => $this->access_key,
                 'Content-Type' => 'application/octet-stream',
             ];
-
-            $args = [
+            return wp_remote_request($uploadEndpoint, [
                 'method' => 'PUT',
                 'headers' => $headers,
-                'body' => file_get_contents($filePath), // Ensure raw binary data
+                'body' => file_get_contents($filePath),
                 'timeout' => 300,
-            ];
-
-            $this->log("Attempting to upload video file: {$filePath}", 'info');
-
-            $response = wp_remote_request($uploadEndpoint, $args);
-
-            $this->log("Upload Response Code: " . wp_remote_retrieve_response_code($response), 'debug');
-            $this->log("Upload Response Body: " . wp_remote_retrieve_body($response), 'debug');
-
-            return is_wp_error($response) ? $response : json_decode(wp_remote_retrieve_body($response), true);
-        }, 3, $collectionId, $userId);
-
+            ]);
+        });
+    
         if (is_wp_error($uploadResponse)) {
-            $this->log("Bunny.net Video Upload Failed: " . $uploadResponse->get_error_message(), 'error');
             return new \WP_Error('upload_failed', __('Failed to upload video to Bunny.net.', 'wp-bunnystream'));
         }
-
+    
         // Step 4: Fetch video metadata to get playback URL
         $videoMetadata = $this->getVideoPlaybackUrl($videoId);
-
-        if (is_wp_error($videoMetadata)) {
-            $this->log("Error retrieving playback URL for video ID {$videoId}: " . $videoMetadata->get_error_message(), 'error');
+        if (is_wp_error($videoMetadata) || empty($videoMetadata['playbackUrl'])) {
             return new \WP_Error('playback_url_failed', __('Failed to retrieve playback URL.', 'wp-bunnystream'));
         }
-
-        if (empty($videoMetadata['playbackUrl'])) {
-            $this->log("Playback URL missing in Bunny.net response for video ID: {$videoId}", 'warning');
-            return new \WP_Error('missing_playback_url', __('Bunny.net response did not include a playback URL.', 'wp-bunnystream'));
-        }
-
-        // Success: Return video details
+    
         return [
             'videoId' => $videoId,
             'videoUrl' => $videoMetadata['playbackUrl'],
         ];
-    }          
+    }                  
     
     /**
      * Set a thumbnail for a video in Bunny.net.
