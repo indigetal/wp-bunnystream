@@ -95,59 +95,29 @@ class BunnyDatabaseManager {
      * Retrieve the collection ID associated with a user.
      */
     public function getUserCollectionId($userId) {
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'bunny_collections';
-    
-        $collectionId = $wpdb->get_var($wpdb->prepare(
-            "SELECT collection_id FROM $table_name WHERE user_id = %d LIMIT 1",
-            $userId
-        ));
-    
-        if (!$collectionId) {
-            error_log("BunnyDatabaseManager: No collection found for user ID {$userId}.");
-        } else {
-            error_log("BunnyDatabaseManager: Found collection ID {$collectionId} for user ID {$userId}.");
-        }
-    
-        return $collectionId ?: null;
-    }        
+        return get_user_meta($userId, '_bunny_collection_id', true);
+    }            
 
     /**
      * Store a user-to-collection association.
      */
-    public function storeUserCollection($userId, $collectionId, $networkWide = false) {
-        global $wpdb;
-    
-        $table_name = $networkWide && is_multisite()
-            ? $wpdb->base_prefix . 'bunny_collections'
-            : $wpdb->prefix . 'bunny_collections';
-    
-            $existingCollection = $this->getUserCollectionId($userId, $networkWide);
-    
-        if ($existingCollection) {
-            // Update the collection instead of ignoring the new one
-            $wpdb->update(
-                $table_name,
-                ['collection_id' => $collectionId, 'created_at' => current_time('mysql')],
-                ['user_id' => $userId],
-                ['%s', '%s'],
-                ['%d']
-            );
-            error_log("BunnyDatabaseManager: Updated collection ID for user ID {$userId} to {$collectionId}.");
-        } else {
-            // If no collection exists, insert a new record
-            $wpdb->insert(
-                $table_name,
-                [
-                    'user_id' => $userId,
-                    'collection_id' => $collectionId,
-                    'created_at' => current_time('mysql'),
-                ],
-                ['%d', '%s', '%s']
-            );
-            error_log("BunnyDatabaseManager: Stored new collection ID {$collectionId} for user ID {$userId}.");
+    public function storeUserCollection($userId, $collectionId) {
+        if (empty($userId) || empty($collectionId)) {
+            return new \WP_Error('missing_parameters', __('User ID and Collection ID are required.', 'wp-bunnystream'));
         }
-    }    
+    
+        // Check if a collection already exists
+        $existingCollection = get_user_meta($userId, '_bunny_collection_id', true);
+    
+        if ($existingCollection === $collectionId) {
+            return true; // No update needed, already set
+        }
+    
+        // Store or update the collection in User Meta
+        update_user_meta($userId, '_bunny_collection_id', $collectionId);
+    
+        return true;
+    }        
 
     public function getCollectionById($collectionId, $networkWide = false) {
         global $wpdb;

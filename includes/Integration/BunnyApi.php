@@ -400,7 +400,7 @@ class BunnyApi {
     
         // Step 1: Ensure a valid collection ID exists before uploading
         if (!$collectionId && $userId) {
-            $collectionId = $this->databaseManager->getUserCollectionId($userId);
+            $collectionId = get_user_meta($userId, '_bunny_collection_id', true);
     
             if ($collectionId) {
                 // Verify if the collection exists on Bunny.net
