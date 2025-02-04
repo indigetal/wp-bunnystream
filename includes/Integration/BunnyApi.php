@@ -63,7 +63,8 @@ class BunnyApi {
             'AccessKey' => $this->access_key,
             'Content-Type' => 'application/json',
             'Accept' => 'application/json',
-        ];
+            'Content-Length' => strlen(json_encode($data)), // Ensure correct length
+        ];        
     
         // Build request arguments
         $args = [
@@ -90,12 +91,16 @@ class BunnyApi {
             }
     
             $response_code = wp_remote_retrieve_response_code($response);
-            $response_body = wp_remote_retrieve_body($response);
-    
+            $response_body = wp_remote_retrieve_body($response) ?: 'No response body';
+
             if ($response_code < 200 || $response_code >= 300) {
                 $this->log("Failed Request to $endpoint (HTTP $response_code)", 'error');
                 $this->log("Response Body: " . $response_body, 'debug');
-                return new \WP_Error('bunny_api_http_error', sprintf(__('Bunny.net API Error (HTTP %d): %s', 'wp-bunnystream'), $response_code, $response_body));
+                return new \WP_Error('bunny_api_http_error', sprintf(
+                    __('Bunny.net API Error (HTTP %d): %s', 'wp-bunnystream'),
+                    $response_code, 
+                    $response_body
+                ));
             }
     
             return json_decode($response_body, true);
@@ -105,62 +110,75 @@ class BunnyApi {
     /**
      * Retry failed API calls with exponential backoff and collection validation.
      */
-    private function retryApiCall($callback, $maxAttempts = 3, $collectionId = null, $userId = null) {
+    private function retryApiCall($callback, $maxAttempts = 3) {
         $attempt = 0;
+    
         while ($attempt < $maxAttempts) {
             $this->log("API Attempt #" . ($attempt + 1), 'info');
-            
+    
+            // Check if a transient exists for rate-limiting
+            $retry_after_time = get_transient('bunny_api_retry_after');
+            if ($retry_after_time && time() < $retry_after_time) {
+                $wait_time = $retry_after_time - time();
+                $this->log("Rate limited. Waiting {$wait_time} seconds before retrying...", 'warning');
+                sleep($wait_time);
+            }
+    
             $response = $callback();
             if (!is_wp_error($response)) {
                 $this->log("API Response (Success): " . json_encode($response), 'debug');
                 return $response;
             }
-
+    
             $error_message = $response->get_error_message();
-            $response_code = is_wp_error($response) ? null : wp_remote_retrieve_response_code($response);
-
-            // Detect a 404 error (potentially invalid collection ID)
-            if ($response_code === 404) {
-                $this->log("API returned 404 (Attempt #{$attempt}). Possible missing collection ID: {$collectionId}. Retrying...", 'warning');
-
-                if ($attempt === 0) {
-                    $this->log("Retrying once more to rule out transient issues...", 'info');
-                    sleep(2); // Short delay before retry
-                    $attempt++;
-                    continue;
-                }
-
-                // Step 1: Confirm if the collection is truly missing
-                if ($collectionId && $userId) {
-                    $collectionCheck = $this->getCollection($collectionId);
-                    if (is_wp_error($collectionCheck)) {
-                        $this->log("Confirmed: Collection {$collectionId} is missing. Recreating a new one.", 'error');
-
-                        // Step 2: Delete old collection ID from database
-                        $this->databaseManager->deleteUserCollection($userId);
-
-                        // Step 3: Create a new collection
-                        $collectionId = $this->createCollection("wpbs_{$userId}", [], $userId);
-                        if (is_wp_error($collectionId)) {
-                            return new \WP_Error('collection_creation_failed', __('Failed to create new collection after API failure.', 'wp-bunnystream'));
-                        }
-
-                        $this->log("New collection {$collectionId} assigned to user {$userId}. Retrying API call.", 'info');
-
-                        // Step 4: Retry the original API call with the new collection
-                        return $callback();
-                    }
-                }
+            $response_code = wp_remote_retrieve_response_code($response);
+    
+            // Handle 429 Too Many Requests
+            if ($response_code === 429) {
+                $retry_after = wp_remote_retrieve_header($response, 'Retry-After');
+                $retry_after_seconds = $retry_after ? (int) $retry_after : (2 ** $attempt);
+    
+                // Store retry-after in a transient to prevent immediate retries
+                set_transient('bunny_api_retry_after', time() + $retry_after_seconds, $retry_after_seconds);
+    
+                $this->log("Rate limit hit (429). Respecting Retry-After: {$retry_after_seconds} seconds.", 'warning');
+                sleep($retry_after_seconds);
+            } else {
+                // Log and retry with exponential backoff for other errors
+                $this->log("API Call Failed (Error: {$error_message}). Retrying in " . (2 ** $attempt) . " seconds...", 'warning');
+                sleep(2 ** $attempt);
             }
-
-            // Exponential backoff before retrying
-            $this->log("API Call Failed. Retrying in " . (2 ** $attempt) . " seconds...", 'warning');
-            sleep(2 ** $attempt);
+    
             $attempt++;
         }
-
+    
         return new \WP_Error('api_failure', __('Bunny.net API failed after multiple attempts.', 'wp-bunnystream'));
-    }        
+    }              
+    
+    /**
+     * Retrieve a list of all collections for a given video library.
+     *
+     * @return array|WP_Error The collection list or WP_Error on failure.
+     */
+    public function listCollections() {
+        $library_id = $this->getLibraryId();
+        if (empty($library_id)) {
+            return new \WP_Error('missing_library_id', __('Library ID is required to fetch collections.', 'wp-bunnystream'));
+        }
+
+        $endpoint = "library/{$library_id}/collections?page=1&itemsPerPage=100";
+        $response = $this->sendJsonToBunny($endpoint, 'GET');
+
+        if (is_wp_error($response)) {
+            return $response;
+        }
+
+        if (!isset($response['items']) || !is_array($response['items'])) {
+            return new \WP_Error('invalid_collection_list', __('Invalid response from Bunny.net when listing collections.', 'wp-bunnystream'));
+        }
+
+        return $response['items'];
+    }
 
     /**
      * Create a new collection within a library.
@@ -173,80 +191,75 @@ class BunnyApi {
     public function createCollection($collectionName, $additionalData = [], $userId = null) {
         $library_id = $this->getLibraryId();
         if (empty($library_id)) {
-            $this->log("Missing Library ID when attempting to create a collection.", 'error');
             return new \WP_Error('missing_library_id', __('Library ID is required to create a collection.', 'wp-bunnystream'));
         }
     
         if (empty($collectionName)) {
-            $this->log("Missing Collection Name for user ID: {$userId}", 'error');
             return new \WP_Error('missing_collection_name', __('Collection name is required.', 'wp-bunnystream'));
         }
     
-        $dbManager = new \WP_BunnyStream\Integration\BunnyDatabaseManager();
-        
-        // Step 1: Check if the collection exists on Bunny.net
-        $existingCollection = $dbManager->getUserCollectionId($userId);
-        if ($existingCollection) {
-            $apiCheck = $this->getCollection($existingCollection);
-            if (!is_wp_error($apiCheck) && isset($apiCheck['guid'])) {
-                $this->log("Collection already exists on Bunny.net with ID: {$existingCollection}", 'info');
-                return $existingCollection;
-            }
-            $this->log("Collection ID {$existingCollection} found in database but missing on Bunny.net. Recreating...", 'warning');
+        // Step 1: Prevent duplicate collection creation using a transient lock
+        $lock_key = "wpbs_collection_lock_{$userId}";
+        if (get_transient($lock_key)) {
+            return new \WP_Error('collection_creation_locked', __('Collection creation is already in progress. Try again later.', 'wp-bunnystream'));
         }
     
-        // Step 2: Create the collection on Bunny.net
+        // Set transient lock to prevent simultaneous requests
+        set_transient($lock_key, true, 10); // Lock expires after 10 seconds
+    
+        // Step 2: Check if the collection already exists on Bunny.net
+        $collections = $this->listCollections();
+        if (!is_wp_error($collections)) {
+            foreach ($collections as $collection) {
+                if ($collection['name'] === $collectionName) {
+                    delete_transient($lock_key); // Remove lock since no new collection is needed
+                    return $collection['guid']; // Return existing collection ID
+                }
+            }
+        }
+    
+        // Step 3: Create the collection on Bunny.net
         $endpoint = "library/{$library_id}/collections";
         $data = array_merge(['name' => $collectionName], $additionalData);
-    
+        
         $response = $this->sendJsonToBunny($endpoint, 'POST', $data);
-        if (is_wp_error($response) || !isset($response['guid'])) {
-            $this->log("Failed to create collection for user {$userId}. Bunny.net API response: " . json_encode($response), 'error');
+    
+        // Remove the transient lock after request completes
+        delete_transient($lock_key);
+    
+        if (is_wp_error($response) || empty($response['guid'])) {
             return new \WP_Error('collection_creation_failed', __('Failed to create collection on Bunny.net.', 'wp-bunnystream'));
         }
     
-        $collectionId = $response['guid'];
-    
-        // Step 3: Store the collection **only if Bunny.net confirmed it exists**
-        if ($userId) {
-            $dbManager->storeUserCollection($userId, $collectionId);
-            $this->log("Collection {$collectionId} successfully created and assigned to user {$userId}.", 'info');
-        } else {
-            // If creation failed, ensure no orphaned database entries exist
-            if (!empty($userId)) { 
-                $dbManager->deleteUserCollection($userId);
-            }
-        }        
-        return $collectionId;
-    }                                    
+        return $response['guid']; // Always return only the GUID
+    }                                            
 
     /**
-     * Create a video object without a collection.
+     * Create a video object
      */
-    public function createVideoObject($title) {
+    public function createVideoObject($title, $collectionId) {
         $library_id = $this->getLibraryId();
         if (empty($library_id)) {
-            $this->log('Library ID is missing or not set.', 'warning');
             return new \WP_Error('missing_library_id', __('Library ID is required to create a video object.', 'wp-bunnystream'));
         }
     
-        $endpoint = "library/{$library_id}/videos";
-        $data = ['title' => $title];
-    
-        $response = $this->sendJsonToBunny($endpoint, 'POST', $data);
-    
-        if (is_wp_error($response)) {
-            return $response;
+        if (empty($collectionId)) {
+            return new \WP_Error('missing_collection_id', __('Collection ID is required to create a video object.', 'wp-bunnystream'));
         }
     
-        // Enhanced error handling for missing GUID
-        if (!isset($response['guid'])) {
-            $this->log('Bunny API Error: API response did not include a GUID. Response: ' . json_encode($response), 'error');
-            return new \WP_Error('video_creation_failed', __('Failed to retrieve video GUID after creation.', 'wp-bunnystream'));
+        $videoData = [
+            'title' => $title,
+            'collectionId' => trim($collectionId), // No need for an if check; collectionId is always required
+        ];
+    
+        $response = $this->sendJsonToBunny("library/{$library_id}/videos", 'POST', $videoData);
+    
+        if (is_wp_error($response) || empty($response['guid'])) {
+            return new \WP_Error('video_creation_failed', __('Failed to create video object.', 'wp-bunnystream'));
         }
     
-        return ['guid' => $response['guid']];
-    }    
+        return $response['guid']; // Return video ID
+    }            
 
     /**
      * Validate MIME type before file upload.
@@ -309,35 +322,26 @@ class BunnyApi {
     }    
 
     /**
-     * Get details of a specific collection.
-     * 
-     * @param string $collectionId The ID of the collection to retrieve.
-     * @return array|WP_Error The collection details or WP_Error on failure.
+     * Check if a specific collection exists in the list of collections.
+     *
+     * @param string $collectionId The ID of the collection to check.
+     * @return array|WP_Error The collection details or WP_Error if it doesn't exist.
      */
     public function getCollection($collectionId) {
-        $library_id = $this->getLibraryId();
-        if (empty($library_id)) {
-            return new \WP_Error('missing_library_id', __('Library ID is required to fetch a collection.', 'wp-bunnystream'));
+        $collections = $this->listCollections();
+        
+        if (is_wp_error($collections)) {
+            return $collections; // Return error if listing collections fails
         }
     
-        if (empty($collectionId)) {
-            return new \WP_Error('missing_collection_id', __('Collection ID is required.', 'wp-bunnystream'));
+        foreach ($collections as $collection) {
+            if ($collection['guid'] === $collectionId) {
+                return $collection;
+            }
         }
     
-        $endpoint = "library/{$library_id}/collections/{$collectionId}";
-        $response = $this->sendJsonToBunny($endpoint, 'GET');
-    
-        if (is_wp_error($response)) {
-            return $response;
-        }
-    
-        if (!isset($response['guid']) || !isset($response['name'])) {
-            $this->log("Invalid collection response: " . json_encode($response), 'error');
-            return new \WP_Error('invalid_collection_data', __('Bunny.net returned an incomplete collection response.', 'wp-bunnystream'));
-        }
-    
-        return $response;
-    }    
+        return null; // Instead of returning a WP_Error, return null if not found
+    }            
 
     /**
      * Update the details of an existing collection.
@@ -397,22 +401,39 @@ class BunnyApi {
         // Step 1: Ensure a valid collection ID exists before uploading
         if (!$collectionId && $userId) {
             $collectionId = $this->databaseManager->getUserCollectionId($userId);
-            if (!$collectionId) {
-                $collectionId = $this->createCollection("wpbs_{$userId}", [], $userId);
-                if (is_wp_error($collectionId)) {
-                    return $collectionId;
+    
+            if ($collectionId) {
+                // Verify if the collection exists on Bunny.net
+                $collectionCheck = $this->getCollection($collectionId);
+                if ($collectionCheck === null || is_wp_error($collectionCheck)) {
+                    $this->log("Stored collection ID {$collectionId} not found on Bunny.net. Removing and creating a new one.", 'error');
+    
+                    // Step 1: Remove stale collection from user meta instead of database
+                    delete_user_meta($userId, '_bunny_collection_id');
+                    $collectionId = null; // Reset collectionId for re-creation
+    
+                    // Step 2: Create a new collection
+                    $collectionId = $this->createCollection("wpbs_{$userId}", [], $userId);
+    
+                    // Step 3: Validate new collection creation
+                    if (!$collectionId || is_wp_error($collectionId)) {
+                        return new \WP_Error('collection_creation_failed', __('Collection creation failed, video upload aborted.', 'wp-bunnystream'));
+                    }
+    
+                    // Step 4: Store new collection ID
+                    update_user_meta($userId, '_bunny_collection_id', $collectionId);
+
+                    if (is_wp_error($collectionId)) {
+                        $this->log("Error storing collection ID {$collectionId} for user {$userId}", 'error');
+                        return new \WP_Error('collection_storage_failed', __('Failed to store new collection in the database.', 'wp-bunnystream'));
+                    }
                 }
-                $this->databaseManager->storeUserCollection($userId, $collectionId);
             }
         }
     
         // Step 2: Create a new video object
-        $videoData = ['title' => basename($filePath)];
-        if (!empty($collectionId)) {
-            $videoData['collectionId'] = $collectionId;
-        }
+        $videoObjectResponse = $this->createVideoObject(basename($filePath), $collectionId);
     
-        $videoObjectResponse = $this->sendJsonToBunny("library/{$library_id}/videos", 'POST', $videoData);
         if (is_wp_error($videoObjectResponse) || empty($videoObjectResponse['guid'])) {
             return new \WP_Error('video_creation_failed', __('Failed to create video object.', 'wp-bunnystream'));
         }
@@ -448,7 +469,7 @@ class BunnyApi {
             'videoId' => $videoId,
             'videoUrl' => $videoMetadata['playbackUrl'],
         ];
-    }                  
+    }                              
     
     /**
      * Set a thumbnail for a video in Bunny.net.
@@ -484,5 +505,4 @@ class BunnyApi {
     
         return true;
     }    
-                 
 }
