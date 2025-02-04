@@ -287,7 +287,24 @@ class BunnyApi {
     
         $endpoint = "library/{$library_id}/videos/{$videoId}";
         return $this->sendJsonToBunny($endpoint, 'GET');
-    }        
+    }
+    
+    /**
+     * Async retry handler for fetching video playback URL.
+     */
+    public function retryFetchVideoPlaybackUrl($videoId, $postId) {
+        $this->log("Retrying playback URL fetch for video ID: {$videoId}", 'info');
+
+        $videoMetadata = $this->getVideoPlaybackUrl($videoId);
+        if (is_wp_error($videoMetadata) || empty($videoMetadata['playbackUrl'])) {
+            $this->log("Playback URL still not available for video ID: {$videoId}. No further retries.", 'error');
+            return;
+        }
+
+        // Store the video playback URL in the post meta
+        update_post_meta($postId, '_bunny_video_url', $videoMetadata['playbackUrl']);
+    }
+
 
     /**
      * Delete a collection by its ID.
@@ -401,32 +418,28 @@ class BunnyApi {
         // Step 1: Ensure a valid collection ID exists before uploading
         if (!$collectionId && $userId) {
             $collectionId = get_user_meta($userId, '_bunny_collection_id', true);
-    
+
             if ($collectionId) {
-                // Verify if the collection exists on Bunny.net
+                // Validate if the collection exists on Bunny.net
                 $collectionCheck = $this->getCollection($collectionId);
+
                 if ($collectionCheck === null || is_wp_error($collectionCheck)) {
                     $this->log("Stored collection ID {$collectionId} not found on Bunny.net. Removing and creating a new one.", 'error');
-    
-                    // Step 1: Remove stale collection from user meta instead of database
+
+                    // Step 1: Remove stale collection from user meta
                     delete_user_meta($userId, '_bunny_collection_id');
                     $collectionId = null; // Reset collectionId for re-creation
-    
+
                     // Step 2: Create a new collection
                     $collectionId = $this->createCollection("wpbs_{$userId}", [], $userId);
-    
+
                     // Step 3: Validate new collection creation
                     if (!$collectionId || is_wp_error($collectionId)) {
                         return new \WP_Error('collection_creation_failed', __('Collection creation failed, video upload aborted.', 'wp-bunnystream'));
                     }
-    
+
                     // Step 4: Store new collection ID
                     update_user_meta($userId, '_bunny_collection_id', $collectionId);
-
-                    if (is_wp_error($collectionId)) {
-                        $this->log("Error storing collection ID {$collectionId} for user {$userId}", 'error');
-                        return new \WP_Error('collection_storage_failed', __('Failed to store new collection in the database.', 'wp-bunnystream'));
-                    }
                 }
             }
         }
@@ -462,7 +475,12 @@ class BunnyApi {
         // Step 4: Fetch video metadata to get playback URL
         $videoMetadata = $this->getVideoPlaybackUrl($videoId);
         if (is_wp_error($videoMetadata) || empty($videoMetadata['playbackUrl'])) {
-            return new \WP_Error('playback_url_failed', __('Failed to retrieve playback URL.', 'wp-bunnystream'));
+            $this->log("Failed to retrieve playback URL for video ID: {$videoId}. Scheduling retry...", 'warning');
+
+            // Schedule a retry event for fetching the playback URL
+            wp_schedule_single_event(time() + 60, 'wpbs_retry_fetch_video_url', [$videoId, $postId]);
+
+            return new \WP_Error('playback_url_failed', __('Playback URL not available yet. Retry scheduled in 60 seconds.', 'wp-bunnystream'));
         }
     
         return [

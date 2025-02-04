@@ -122,3 +122,10 @@ function enqueue_bunny_frontend_scripts() {
     ]);
 }
 add_action('wp_enqueue_scripts', 'enqueue_bunny_frontend_scripts');
+
+/**
+ * Register scheduled event for retrying playback URL retrieval.
+ */
+add_action('wpbs_retry_fetch_video_url', function($videoId, $postId) {
+    BunnyApiInstance::getInstance()->retryFetchVideoPlaybackUrl($videoId, $postId);
+}, 10, 2);
