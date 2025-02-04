@@ -7,7 +7,6 @@ use WP_BunnyStream\Admin\BunnySettings;
 class BunnyApi {
     private static $instance = null;
     private $video_base_url = 'https://video.bunnycdn.com/';
-    private $library_base_url = 'https://api.bunny.net/';
     private $access_key;
     private $library_id;
 
@@ -102,6 +101,8 @@ class BunnyApi {
                     $response_body
                 ));
             }
+
+            $this->log("sendJsonToBunny Response: " . print_r($response_body, true), 'debug');
     
             return json_decode($response_body, true);
         });
@@ -256,6 +257,17 @@ class BunnyApi {
         ];
     
         $response = $this->sendJsonToBunny("library/{$library_id}/videos", 'POST', $videoData);
+
+        if (is_string($response)) {
+            $this->log("createVideoObject: Response was a string, decoding it now.", 'warning');
+            $response = json_decode($response, true);
+        }
+
+        if (is_wp_error($response) || !is_array($response) || empty($response['guid'])) {
+            return new \WP_Error('video_creation_failed', __('Failed to create video object.', 'wp-bunnystream'));
+        }
+
+        return $response;
     
         if (is_wp_error($response) || empty($response['guid'])) {
             return new \WP_Error('video_creation_failed', __('Failed to create video object.', 'wp-bunnystream'));
@@ -449,30 +461,39 @@ class BunnyApi {
     
         // Step 2: Create a new video object in the collection
         $videoObjectResponse = $this->createVideoObject(basename($filePath), $collectionId);
+
+        $this->log("uploadVideo: Video Object Response: " . print_r($videoObjectResponse, true), 'debug');
+
+        if (!is_array($videoObjectResponse) || !isset($videoObjectResponse['guid']) || empty($videoObjectResponse['guid'])) {
+            $this->log("uploadVideo: Invalid video object response. Full response: " . print_r($videoObjectResponse, true), 'error');
+            return new \WP_Error('video_creation_failed', __('Failed to create video object.', 'wp-bunnystream'));
+        }        
     
         if (is_wp_error($videoObjectResponse) || empty($videoObjectResponse['guid'])) {
             return new \WP_Error('video_creation_failed', __('Failed to create video object.', 'wp-bunnystream'));
         }
     
         $videoId = $videoObjectResponse['guid'];
+        $this->log("uploadVideo: Preparing to upload file {$filePath} to Bunny.net with video ID {$videoId}.", 'debug');
     
         // Step 3: Upload the video file using a PUT request
         $uploadEndpoint = "library/{$library_id}/videos/{$videoId}";
-        $videoData = file_get_contents($filePath);
+        $videoData = fopen($filePath, 'r');
 
-        if ($videoData === false) {
-            $this->log("uploadVideo: Failed to read video file for {$filePath}.", 'error');
+        if ($videoData === false || filesize($filePath) === 0) {
+            $this->log("uploadVideo: Failed to read video file for {$filePath}. File size: " . filesize($filePath) . " bytes.", 'error');
             return new \WP_Error('video_file_read_failed', __('Failed to read the video file before uploading.', 'wp-bunnystream'));
         }
 
         $uploadResponse = $this->retryApiCall(function() use ($uploadEndpoint, $videoData) {
             $headers = [
                 'AccessKey' => $this->access_key,
-                'Content-Type' => 'application/octet-stream',
                 'Accept' => 'application/json'
             ];
 
-            return wp_remote_request($this->api_base_url . $uploadEndpoint, [ // <-- Ensuring URL consistency
+            $this->log("uploadVideo: Sending API request to Bunny.net. Endpoint: library/{$library_id}/videos/{$videoId}", 'debug');
+
+            return wp_remote_post($this->video_base_url . $uploadEndpoint, [
                 'method'    => 'PUT',
                 'headers'   => $headers,
                 'body'      => $videoData,
@@ -481,9 +502,13 @@ class BunnyApi {
         });
 
         if (is_wp_error($uploadResponse)) {
-            $this->log("uploadVideo: File upload failed for {$filePath}.", 'error');
+            $this->log("uploadVideo: File upload failed for {$filePath}. Error: " . $uploadResponse->get_error_message(), 'error');
             return new \WP_Error('video_upload_failed', __('Failed to upload video file to Bunny.net.', 'wp-bunnystream'));
         }
+        
+        // Log the full response from Bunny.net
+        $responseBody = wp_remote_retrieve_body($uploadResponse);
+        $this->log("uploadVideo: Bunny.net Response - " . print_r($responseBody, true), 'debug');        
     
         // Step 4: Fetch video metadata to get playback URL
         $videoMetadata = $this->getVideoPlaybackUrl($videoId);
@@ -500,7 +525,7 @@ class BunnyApi {
             'videoId' => $videoId,
             'videoUrl' => $videoMetadata['playbackUrl'],
         ];
-    }                                
+    }                               
     
     /**
      * Set a thumbnail for a video in Bunny.net.
