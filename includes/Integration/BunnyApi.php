@@ -434,7 +434,7 @@ class BunnyApi {
                     $collectionId = null; // Reset collectionId for re-creation
 
                     // Step 2: Create a new collection
-                    $collectionId = $this->createCollection("wpbs_{$userId}", [], $userId);
+                    $collectionId = $this->createCollection($userId, [], $userId);
 
                     // Step 3: Validate new collection creation
                     if (!$collectionId || is_wp_error($collectionId)) {

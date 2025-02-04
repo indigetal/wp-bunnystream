@@ -88,7 +88,7 @@ class BunnyMediaLibrary {
     
         // Step 1: Retrieve or create the user's collection.
         $collectionId = $this->databaseManager->getUserCollectionId($user_id) 
-        ?: $this->bunnyApi->createCollection(null, [], $user_id);
+    ?: $this->bunnyApi->createCollection($user_id, [], $user_id);
 
         if (is_wp_error($collectionId)) {
         $this->log("Failed to create collection for user ID {$user_id}: " . $collectionId->get_error_message(), 'error');
