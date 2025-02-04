@@ -65,6 +65,9 @@ class BunnyMediaLibrary {
      * @return array|WP_Error The modified upload array including Bunny.net video details or WP_Error on failure.
      */
     public function offloadVideo($upload, $post_id, $user_id) {
+
+        $this->log("offloadVideo: Processing upload for post ID {$post_id}, user ID {$user_id}.", 'debug');
+
         // Validate file existence.
         if (!isset($upload['file']) || !file_exists($upload['file'])) {
             $this->log('Invalid file path provided for video offloading.', 'error');
@@ -145,6 +148,12 @@ class BunnyMediaLibrary {
         if (strpos($mime, 'video/') !== 0) {
             return;
         }
+
+        // Prevent WP Offload Media from triggering multiple uploads
+        if (class_exists('AS3CF_Plugin')) {
+            $this->log("handleAttachmentMetadata: WP Offload Media detected. Skipping duplicate execution.", 'warning');
+            return;
+        }
     
         // Prevent duplicate uploads using a transient lock
         $lock_key = "wpbs_video_upload_lock_{$post_id}";
@@ -177,6 +186,8 @@ class BunnyMediaLibrary {
     
         // Build a minimal upload array for offloadVideo().
         $upload_data = ['file' => $filePath];
+
+        $this->log("handleAttachmentMetadata: Calling offloadVideo() for post ID {$post_id}.", 'debug');
     
         // Call offloadVideo() to offload the video.
         $result = $this->offloadVideo($upload_data, $post_id, $user_id);

@@ -429,19 +429,19 @@ class BunnyApi {
                 if ($collectionCheck === null || is_wp_error($collectionCheck)) {
                     $this->log("Stored collection ID {$collectionId} not found on Bunny.net. Removing and creating a new one.", 'error');
     
-                    // Step 1: Remove stale collection from user meta
+                    // Remove stale collection from user meta
                     delete_user_meta($userId, '_bunny_collection_id');
                     $collectionId = null; // Reset collectionId for re-creation
     
-                    // Step 2: Create a new collection
+                    // Create a new collection
                     $collectionId = $this->createCollection($userId, [], $userId);
     
-                    // Step 3: Validate new collection creation
+                    // Validate new collection creation
                     if (!$collectionId || is_wp_error($collectionId)) {
                         return new \WP_Error('collection_creation_failed', __('Collection creation failed, video upload aborted.', 'wp-bunnystream'));
                     }
     
-                    // Step 4: Store new collection ID
+                    // Store new collection ID
                     update_user_meta($userId, '_bunny_collection_id', $collectionId);
                 }
             }
@@ -456,22 +456,32 @@ class BunnyApi {
     
         $videoId = $videoObjectResponse['guid'];
     
-        // Step 3: Upload the actual video file to Bunny.net using PUT request
+        // Step 3: Upload the video file using a PUT request
         $uploadEndpoint = "library/{$library_id}/videos/{$videoId}";
-        $uploadResponse = $this->retryApiCall(function() use ($uploadEndpoint, $filePath) {
+        $videoData = file_get_contents($filePath);
+
+        if ($videoData === false) {
+            $this->log("uploadVideo: Failed to read video file for {$filePath}.", 'error');
+            return new \WP_Error('video_file_read_failed', __('Failed to read the video file before uploading.', 'wp-bunnystream'));
+        }
+
+        $uploadResponse = $this->retryApiCall(function() use ($uploadEndpoint, $videoData) {
             $headers = [
                 'AccessKey' => $this->access_key,
                 'Content-Type' => 'application/octet-stream',
+                'Accept' => 'application/json'
             ];
-            return wp_remote_request($uploadEndpoint, [
+
+            return wp_remote_request($this->api_base_url . $uploadEndpoint, [ // <-- Ensuring URL consistency
                 'method'    => 'PUT',
                 'headers'   => $headers,
-                'body'      => file_get_contents($filePath),
+                'body'      => $videoData,
                 'timeout'   => 300,
             ]);
         });
-    
+
         if (is_wp_error($uploadResponse)) {
+            $this->log("uploadVideo: File upload failed for {$filePath}.", 'error');
             return new \WP_Error('video_upload_failed', __('Failed to upload video file to Bunny.net.', 'wp-bunnystream'));
         }
     
