@@ -387,11 +387,11 @@ class BunnyApi {
         }
 
         // Step 1: Ensure a valid collection ID exists before uploading
-        if (!$collectionId && $userId) {
+        if ($userId) {
             $collectionId = get_user_meta($userId, '_bunny_collection_id', true);
 
-            if ($collectionId) {
-                // Validate if the collection exists on Bunny.net
+            // Validate if the collection exists on Bunny.net
+            if (!empty($collectionId)) {
                 $collectionCheck = $this->getCollection($collectionId);
 
                 if ($collectionCheck === null || is_wp_error($collectionCheck)) {
@@ -400,18 +400,20 @@ class BunnyApi {
                     // Remove stale collection from user meta
                     delete_user_meta($userId, '_bunny_collection_id');
                     $collectionId = null; // Reset collectionId for re-creation
-
-                    // Create a new collection
-                    $collectionId = $this->createCollection($userId);
-
-                    // Validate new collection creation
-                    if (!$collectionId || is_wp_error($collectionId)) {
-                        return new \WP_Error('collection_creation_failed', __('Collection creation failed, video upload aborted.', 'wp-bunnystream'));
-                    }
-
-                    // Store new collection ID
-                    update_user_meta($userId, '_bunny_collection_id', $collectionId);
                 }
+            }
+
+            // If the collection is still null, create a new one
+            if (empty($collectionId)) {
+                $collectionId = $this->createCollection($userId);
+
+                // Validate new collection creation
+                if (!$collectionId || is_wp_error($collectionId)) {
+                    return new \WP_Error('collection_creation_failed', __('Collection creation failed, video upload aborted.', 'wp-bunnystream'));
+                }
+
+                // Store new collection ID
+                update_user_meta($userId, '_bunny_collection_id', $collectionId);
             }
         }
 
@@ -461,8 +463,15 @@ class BunnyApi {
         $responseBody = wp_remote_retrieve_body($uploadResponse);
         $this->log("uploadVideo: Bunny.net Response - " . print_r($responseBody, true), 'debug');
 
-        // Step 4: Construct the playback URL
-        $playbackUrl = "https://video.bunnycdn.com/play/{$library_id}/{$videoId}";
+        // Fetch the stored Pull Zone from the settings
+        $pullZone = get_option(BunnySettings::OPTION_PULL_ZONE, '');
+        if (empty($pullZone)) {
+            $this->log('Pull Zone is missing or not set. Using default Bunny.net CDN.', 'warning');
+            $pullZone = "video.bunnycdn.com"; // Default Bunny.net CDN if pull zone isn't set
+        }
+
+        // Construct the MP4 playback URL using the stored Pull Zone
+        $playbackUrl = "https://{$pullZone}/{$videoId}/play_720p.mp4"; // Default to 720p resolution
 
         // Store playback URL in post meta
         if ($postId) {
