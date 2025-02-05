@@ -462,7 +462,7 @@ class BunnyApi {
         $this->log("uploadVideo: Bunny.net Response - " . print_r($responseBody, true), 'debug');
 
         // Step 4: Construct the playback URL
-        $playbackUrl = "https://iframe.mediadelivery.net/play/{$library_id}/{$videoId}";
+        $playbackUrl = "https://video.bunnycdn.com/play/{$library_id}/{$videoId}";
 
         // Store playback URL in post meta
         if ($postId) {
@@ -495,8 +495,13 @@ class BunnyApi {
             return new \WP_Error('missing_video_id', __('Video ID is required to set a thumbnail.', 'wp-bunnystream'));
         }
 
+        $pullZone = get_option(BunnySettings::OPTION_PULL_ZONE, '');
+        if (empty($pullZone)) {
+            $this->log('Pull Zone is missing or not set.', 'warning');
+            return new \WP_Error('missing_pull_zone', __('Pull Zone is required to set a thumbnail.', 'wp-bunnystream'));
+        }
         // Construct the static thumbnail URL
-        $thumbnailUrl = "https://vz-4a411d19-2d3.b-cdn.net/{$videoId}/thumbnail.jpg";
+        $thumbnailUrl = "https://{$pullZone}/{$videoId}/thumbnail.jpg";
 
         // Store thumbnail URL in post meta
         if ($postId) {

@@ -23,6 +23,7 @@ class BunnySettings {
      */
     const OPTION_ACCESS_KEY = 'bunny_net_access_key';
     const OPTION_LIBRARY_ID = 'bunny_net_library_id';
+    const OPTION_PULL_ZONE = 'bunny_net_pull_zone';
 
     /**
      * BunnyApi instance.
@@ -122,6 +123,9 @@ class BunnySettings {
         ]);
         register_setting('bunny_net_settings', self::OPTION_LIBRARY_ID, [
             'sanitize_callback' => function($value) { return BunnySettings::encrypt_api_key($value); }
+        ]);
+        register_setting('bunny_net_settings', self::OPTION_PULL_ZONE, [
+            'sanitize_callback' => 'sanitize_text_field'
         ]);                
 
         add_settings_section(
@@ -143,6 +147,14 @@ class BunnySettings {
             self::OPTION_LIBRARY_ID,
             __('Library ID', 'wp-bunnystream'),
             [$this, 'renderLibraryIdField'],
+            'bunny-net-settings',
+            'bunny_net_credentials'
+        );
+
+        add_settings_field(
+            self::OPTION_PULL_ZONE,
+            __('Pull Zone', 'wp-bunnystream'),
+            [$this, 'renderPullZoneField'],
             'bunny-net-settings',
             'bunny_net_credentials'
         );
@@ -179,7 +191,18 @@ class BunnySettings {
         echo '<p class="description">';
         echo esc_html__('When activated on a multisite network, a different library should be used for each site on the network to avoid duplicate naming conflicts of the user collections that are automatically generated.', 'wp-bunnystream');
         echo '</p>';
-    }    
+    }   
+    
+    /**
+     * Render the Pull Zone field.
+     */
+    public function renderPullZoneField() {
+        $pull_zone = esc_attr(get_option(self::OPTION_PULL_ZONE, ''));
+        echo "<input type='text' name='" . self::OPTION_PULL_ZONE . "' value='$pull_zone' class='regular-text' />";
+        echo '<p class="description">';
+        echo __('You can locate your Pull Zone at <strong>Stream > Your Library > API > Manage</strong>. Please include the full hostname.', 'wp-bunnystream');
+        echo '</p>';
+    }
 
     /**
      * Check and create a video object if Access Key or Library ID changes.
