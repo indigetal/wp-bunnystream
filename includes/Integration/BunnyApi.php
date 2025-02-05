@@ -303,9 +303,8 @@ class BunnyApi {
         }
     
         if ($userId) {
-            $dbManager = new \WP_BunnyStream\Integration\BunnyDatabaseManager();
-            $dbManager->deleteUserCollection($userId);
-        }
+            delete_user_meta($userId, '_bunny_collection_id');
+        }        
     
         return true;
     }    
@@ -482,33 +481,43 @@ class BunnyApi {
      *
      * @param string $videoId The ID of the video.
      * @param int|null $timestamp (Optional) The timestamp (in seconds) from which to generate the thumbnail.
+     * @param int|null $postId (Optional) The post ID where the thumbnail should be stored.
      * @return bool|WP_Error True on success, WP_Error on failure.
-     */
-    public function setThumbnail($videoId, $timestamp = null) {
+    */
+    public function setThumbnail($videoId, $timestamp = null, $postId = null) {
         $library_id = $this->getLibraryId();
         if (empty($library_id)) {
             $this->log('Library ID is missing or not set.', 'warning');
             return new \WP_Error('missing_library_id', __('Library ID is required to set a thumbnail.', 'wp-bunnystream'));
         }
-    
+
         if (empty($videoId)) {
             return new \WP_Error('missing_video_id', __('Video ID is required to set a thumbnail.', 'wp-bunnystream'));
         }
-    
-        $endpoint = "library/{$library_id}/videos/{$videoId}/thumbnail";
-    
-        $data = [];
+
+        // Construct the static thumbnail URL
+        $thumbnailUrl = "https://vz-4a411d19-2d3.b-cdn.net/{$videoId}/thumbnail.jpg";
+
+        // Store thumbnail URL in post meta
+        if ($postId) {
+            update_post_meta($postId, '_bunny_thumbnail_url', $thumbnailUrl);
+            $this->log("setThumbnail: Stored thumbnail URL in post meta for post ID: {$postId}", 'info');
+        }
+
+        // If a timestamp is provided, make a request to update the thumbnail
         if (!is_null($timestamp)) {
-            $data['time'] = $timestamp;
+            $endpoint = "library/{$library_id}/videos/{$videoId}/thumbnail";
+            $data = ['time' => $timestamp];
+
+            $response = $this->sendJsonToBunny($endpoint, 'POST', $data);
+
+            if (is_wp_error($response)) {
+                $this->log('Bunny API Error: Failed to set video thumbnail: ' . $response->get_error_message(), 'error');
+                return $response;
+            }
         }
-    
-        $response = $this->sendJsonToBunny($endpoint, 'POST', $data);
-    
-        if (is_wp_error($response)) {
-            error_log('Bunny API Error: Failed to set video thumbnail: ' . $response->get_error_message());
-            return $response;
-        }
-    
+
         return true;
-    }    
+    }
+    
 }

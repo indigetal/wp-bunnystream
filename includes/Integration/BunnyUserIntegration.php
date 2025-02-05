@@ -1,7 +1,7 @@
 <?php
 namespace WP_BunnyStream\Integration;
 
-use WP_BunnyStream\Integration\BunnyDatabaseManager;
+use WP_BunnyStream\Integration\BunnyApiKeyManager;
 use WP_BunnyStream\Integration\BunnyMetadataManager;
 
 if (!defined('ABSPATH')) {
@@ -17,7 +17,7 @@ class BunnyUserIntegration {
         // Initialize BunnyApi instance
         $this->bunnyApi = \BunnyApiInstance::getInstance();
         $this->metadataManager = new BunnyMetadataManager();
-        $this->databaseManager = new BunnyDatabaseManager();
+        $this->databaseManager = new BunnyApiKeyManager();
 
         // Hook into user actions
         add_action('delete_user', [$this, 'handleUserDeletion']);
@@ -75,7 +75,7 @@ class BunnyUserIntegration {
             }
             
             // Remove collection record from the database
-            $this->databaseManager->deleteUserCollection($userId);
+            delete_user_meta($userId, '_bunny_collection_id');
         }
     }
 }

@@ -3,7 +3,7 @@ namespace WP_BunnyStream\Integration;
 
 use WP_BunnyStream\Integration\BunnyApi;
 use WP_BunnyStream\Integration\BunnyMetadataManager;
-use WP_BunnyStream\Integration\BunnyDatabaseManager;
+use WP_BunnyStream\Integration\BunnyApiKeyManager;
 
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly.
@@ -17,7 +17,7 @@ class BunnyMediaLibrary {
     public function __construct() {
         $this->bunnyApi = BunnyApi::getInstance();
         $this->metadataManager = new BunnyMetadataManager();
-        $this->databaseManager = new BunnyDatabaseManager();
+        $this->databaseManager = new BunnyApiKeyManager();
 
         add_filter('wp_handle_upload', [$this, 'interceptUpload'], 10, 2);
         add_action('add_attachment', [$this, 'handleAttachmentMetadata'], 10, 1);
@@ -90,18 +90,18 @@ class BunnyMediaLibrary {
         }
     
         // Step 1: Retrieve or create the user's collection.
-        $collectionId = $this->databaseManager->getUserCollectionId($user_id) 
-    ?: $this->bunnyApi->createCollection($user_id, [], $user_id);
+        $collectionId = get_user_meta($user_id, '_bunny_collection_id', true) 
+        ?: $this->bunnyApi->createCollection($user_id);
 
         if (is_wp_error($collectionId)) {
         $this->log("Failed to create collection for user ID {$user_id}: " . $collectionId->get_error_message(), 'error');
         return $collectionId;
         }
 
-        // Store the collection ID in the database if it was newly created.
-        if (!$this->databaseManager->getUserCollectionId($user_id)) {
-        $this->databaseManager->storeUserCollection($user_id, $collectionId);
-        $this->log("Collection ID {$collectionId} assigned to user ID {$user_id}.", 'info');
+        // Store the collection ID in user meta if it was newly created.
+        if (!get_user_meta($user_id, '_bunny_collection_id', true)) {
+            update_user_meta($user_id, '_bunny_collection_id', $collectionId);
+            $this->log("Collection ID {$collectionId} assigned to user ID {$user_id}.", 'info');
         }
     
         // Step 2: Offload the video file using BunnyApi.

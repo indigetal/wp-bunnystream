@@ -10,7 +10,7 @@
 namespace WP_BunnyStream\Admin;
 
 use WP_BunnyStream\Integration\BunnyApi;
-use WP_BunnyStream\Integration\BunnyDatabaseManager;
+use WP_BunnyStream\Integration\BunnyApiKeyManager;
 
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly.

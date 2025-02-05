@@ -21,14 +21,6 @@ class BunnyMetadataManager {
 
         // Store the thumbnail in WordPress metadata
         update_post_meta($postId, '_bunny_thumbnail_url', esc_url($thumbnailUrl));
-
-        // Set the thumbnail on Bunny.net via API
-        $bunnyApi = new \WP_BunnyStream\Integration\BunnyApi();
-        $setThumbnailResponse = $bunnyApi->setThumbnail($videoId);
-
-        if (is_wp_error($setThumbnailResponse)) {
-            error_log('BunnyMetadataManager: Failed to set Bunny.net thumbnail: ' . $setThumbnailResponse->get_error_message());
-        }
     }
 
     /**
@@ -59,26 +51,15 @@ class BunnyMetadataManager {
 
         // Sanitize input
         $videoData = array_map('sanitize_text_field', $videoData);
-        if (isset($videoData['videoUrl'])) {
-            $videoData['videoUrl'] = esc_url($videoData['videoUrl']);
-        }
-
-        // Store metadata under `_video`
-        $result = update_post_meta($id, '_video', $videoData);
-
-        if (!$result) {
-            error_log("BunnyMetadataManager: Failed to store metadata for ID {$id}.");
-            return false;
-        }
-
-        // Automatically attempt to set the Bunny.net thumbnail
+        
+        // Store video metadata in `_video` meta key (excluding videoUrl & thumbnailUrl)
+        unset($videoData['videoUrl'], $videoData['thumbnailUrl']);
+        update_post_meta($id, '_video', $videoData);
+        
+        // Store playback URL separately
         if (!empty($videoData['videoId'])) {
-            $bunnyApi = new \WP_BunnyStream\Integration\BunnyApi();
-            $setThumbnailResponse = $bunnyApi->setThumbnail($videoData['videoId']);
-
-            if (is_wp_error($setThumbnailResponse)) {
-                error_log('BunnyMetadataManager: Failed to set Bunny.net thumbnail: ' . $setThumbnailResponse->get_error_message());
-            }
+            $playbackUrl = "https://iframe.mediadelivery.net/play/" . get_option('bunny_library_id') . "/" . $videoData['videoId'];
+            update_post_meta($id, '_bunny_video_url', esc_url($playbackUrl));
         }
 
         return true;
@@ -104,42 +85,10 @@ class BunnyMetadataManager {
         }
 
         $videoData = get_post_meta($id, '_video', true);
-
-        if (empty($videoData)) {
-            error_log("BunnyMetadataManager: No video metadata found for ID {$id}.");
-            return null;
-        }
+        $videoData['videoUrl'] = get_post_meta($id, '_bunny_video_url', true);
+        $videoData['thumbnailUrl'] = get_post_meta($id, '_bunny_thumbnail_url', true);
 
         return array_map('sanitize_text_field', $videoData);
-    }
-
-    /**
-     * Deletes the video metadata for a specific post or media library item.
-     *
-     * @param int $id The post ID or attachment ID.
-     * @return bool True if metadata deleted successfully, false otherwise.
-     */
-    public function deleteVideoMetadata($id) {
-        if (empty($id)) {
-            error_log('BunnyMetadataManager: Invalid ID for deleteVideoMetadata.');
-            return false;
-        }
-
-        // Ensure ID is either a post or an attachment
-        $postType = get_post_type($id);
-        if ($postType !== 'post' && $postType !== 'attachment') {
-            error_log("BunnyMetadataManager: Invalid post type ({$postType}) for ID {$id}.");
-            return false;
-        }
-
-        $result = delete_post_meta($id, '_video');
-
-        if (!$result) {
-            error_log("BunnyMetadataManager: Failed to delete metadata for ID {$id}.");
-            return false;
-        }
-
-        return true;
     }
 
     /**
