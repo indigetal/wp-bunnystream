@@ -1,6 +1,6 @@
 <?php
 
-namespace WP_BunnyStream\Integration;
+namespace WP_BunnyStream\API;
 
 use WP_BunnyStream\Admin\BunnySettings;
 

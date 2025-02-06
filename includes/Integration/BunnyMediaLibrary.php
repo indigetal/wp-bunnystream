@@ -1,9 +1,9 @@
 <?php
 namespace WP_BunnyStream\Integration;
 
-use WP_BunnyStream\Integration\BunnyApi;
+use WP_BunnyStream\API\BunnyApi;
 use WP_BunnyStream\Integration\BunnyMetadataManager;
-use WP_BunnyStream\Integration\BunnyApiKeyManager;
+use WP_BunnyStream\API\BunnyApiKeyManager;
 
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly.

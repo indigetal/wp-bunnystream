@@ -1,7 +1,7 @@
 <?php
 namespace WP_BunnyStream\Integration;
 
-use WP_BunnyStream\Integration\BunnyApiKeyManager;
+use WP_BunnyStream\API\BunnyApiKeyManager;
 use WP_BunnyStream\Integration\BunnyMetadataManager;
 
 if (!defined('ABSPATH')) {

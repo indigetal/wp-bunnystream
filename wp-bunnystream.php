@@ -13,11 +13,13 @@ if (!defined('ABSPATH')) {
 
 // Include required files
 require_once plugin_dir_path(__FILE__) . 'includes/Admin/BunnySettings.php';
-require_once plugin_dir_path(__FILE__) . 'includes/Integration/BunnyApi.php';
-require_once plugin_dir_path(__FILE__) . 'includes/Integration/BunnyApiKeyManager.php';
+require_once plugin_dir_path(__FILE__) . 'includes/API/BunnyApi.php';
+require_once plugin_dir_path(__FILE__) . 'includes/API/BunnyApiKeyManager.php';
 require_once plugin_dir_path(__FILE__) . 'includes/Integration/BunnyMetadataManager.php';
 require_once plugin_dir_path(__FILE__) . 'includes/Integration/BunnyUserIntegration.php';
 require_once plugin_dir_path(__FILE__) . 'includes/Integration/BunnyMediaLibrary.php';
+require_once plugin_dir_path(__FILE__) . 'includes/Utils/BunnyLogger.php';
+require_once plugin_dir_path(__FILE__) . 'includes/Blocks/BunnyStreamBlock.php';
 
 /**
  * Singleton class for BunnyApi instance.
@@ -27,7 +29,7 @@ class BunnyApiInstance {
 
     public static function getInstance() {
         if (self::$instance === null) {
-            self::$instance = \WP_BunnyStream\Integration\BunnyApi::getInstance();
+            self::$instance = \WP_BunnyStream\API\BunnyApi::getInstance();
         }
         return self::$instance;
     }
@@ -39,7 +41,7 @@ class BunnyApiInstance {
 function wp_bunnystream_init() {
     // Initialize settings and database management
     new \WP_BunnyStream\Admin\BunnySettings();
-    new \WP_BunnyStream\Integration\BunnyApiKeyManager();
+    new \WP_BunnyStream\API\BunnyApiKeyManager();
     new \WP_BunnyStream\Integration\BunnyMetadataManager();
     new \WP_BunnyStream\Integration\BunnyUserIntegration();
     new \WP_BunnyStream\Integration\BunnyMediaLibrary();
@@ -61,12 +63,12 @@ function wp_bunnystream_enqueue_admin_scripts($hook) {
         );
 
         // Ensure BunnyApi is initialized
-        $bunny_api = WP_BunnyStream\Integration\BunnyApi::getInstance();
+        $bunny_api = WP_BunnyStream\API\BunnyApi::getInstance();
 
         wp_localize_script('bunny-video-upload', 'bunnyUploadVars', [
             'ajaxurl'     => admin_url('admin-ajax.php'),
             'nonce'       => wp_create_nonce('bunny_nonce'),
-            'maxFileSize' => WP_BunnyStream\Integration\BunnyApi::MAX_FILE_SIZE,
+            'maxFileSize' => WP_BunnyStream\API\BunnyApi::MAX_FILE_SIZE,
         ]);
     }
 }
@@ -93,12 +95,12 @@ function enqueue_bunny_frontend_scripts() {
     );
 
     // Ensure BunnyApi is initialized
-    $bunny_api = WP_BunnyStream\Integration\BunnyApi::getInstance();
+    $bunny_api = WP_BunnyStream\API\BunnyApi::getInstance();
 
     wp_localize_script('bunny-video-upload', 'bunnyUploadVars', [
         'ajaxurl'     => admin_url('admin-ajax.php'),
         'nonce'       => wp_create_nonce('bunny_nonce'),
-        'maxFileSize' => WP_BunnyStream\Integration\BunnyApi::MAX_FILE_SIZE,
+        'maxFileSize' => WP_BunnyStream\API\BunnyApi::MAX_FILE_SIZE,
     ]);
 }
 add_action('wp_enqueue_scripts', 'enqueue_bunny_frontend_scripts');
