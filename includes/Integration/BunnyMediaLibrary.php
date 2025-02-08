@@ -179,11 +179,10 @@ class BunnyMediaLibrary {
         }
     
         // Optionally, update the attachment's URL and metadata.
-        if (isset($result['bunny_video_url'])) {
-            update_post_meta($post_id, '_bunny_video_url', $result['bunny_video_url']);
+        if (isset($result['video_id'])) {
             update_post_meta($post_id, '_bunny_video_id', $result['video_id']);
             BunnyLogger::log("handleAttachmentMetadata: Offloading succeeded for post ID {$post_id}.", 'info');
-        }
+        }        
     }   
     
     /**
@@ -209,9 +208,11 @@ class BunnyMediaLibrary {
      * @return string The overridden Bunny.net URL if available, otherwise the original URL.
      */
     public function filterBunnyVideoURL($url, $postId) {
-        $bunnyVideoURL = get_post_meta($postId, '_bunny_video_url', true);
-        return !empty($bunnyVideoURL) ? esc_url($bunnyVideoURL) : $url;
-    }
+        $videoHandler = BunnyVideoHandler::getInstance();
+        $playbackUrls = $videoHandler->getPlaybackUrls($postId);
+        
+        return !empty($playbackUrls['mp4']) ? esc_url($playbackUrls['mp4']) : $url;
+    }    
 }
 
 // Initialize the media library integration

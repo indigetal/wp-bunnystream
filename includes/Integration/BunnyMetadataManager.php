@@ -67,7 +67,12 @@ class BunnyMetadataManager {
         }
 
         $videoData = get_post_meta($id, '_video', true);
-        $videoData['videoUrl'] = get_post_meta($id, '_bunny_video_url', true);
+        $videoHandler = \WP_BunnyStream\API\BunnyVideoHandler::getInstance();
+        $playbackUrls = $videoHandler->getPlaybackUrls($id);
+
+        $videoData['videoUrl'] = $playbackUrls['mp4'] ?? '';
+        $videoData['iframeUrl'] = $playbackUrls['iframe'] ?? '';
+
         $videoData['thumbnailUrl'] = get_post_meta($id, '_bunny_thumbnail_url', true);
 
         return array_map('sanitize_text_field', $videoData);

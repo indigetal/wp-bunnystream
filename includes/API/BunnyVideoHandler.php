@@ -27,6 +27,21 @@ class BunnyVideoHandler {
         return self::$instance;
     }
 
+    public function getPlaybackUrls($postId) {
+        $videoId = get_post_meta($postId, '_bunny_video_id', true);
+        if (empty($videoId)) {
+            return null;
+        }
+    
+        $pullZone = get_option('bunny_net_pull_zone', '');
+        $iframeUrl = get_post_meta($postId, '_bunny_iframe_url', true); // Use stored value
+    
+        return [
+            'mp4'    => "https://{$pullZone}/{$videoId}/play_720p.mp4",
+            'iframe' => $iframeUrl, // No need to reconstruct dynamically
+        ];
+    }    
+
     /**
      * Upload a video to Bunny.net.
      * 
@@ -130,19 +145,25 @@ class BunnyVideoHandler {
             $pullZone = "video.bunnycdn.com"; // Default Bunny.net CDN if pull zone isn't set
         }
 
-        // Construct the MP4 playback URL using the stored Pull Zone
-        $playbackUrl = "https://{$pullZone}/{$videoId}/play_720p.mp4"; // Default to 720p resolution
-
-        // Store playback URL in post meta
         if ($postId) {
-            update_post_meta($postId, '_bunny_video_url', $playbackUrl);
-            BunnyLogger::log("uploadVideo: Stored playback URL in post meta for post ID: {$postId}", 'info');
-        }
+            $library_id = $this->apiClient->getLibraryId();
+            if (!empty($library_id)) {
+                update_post_meta($postId, '_bunny_iframe_url', "https://iframe.mediadelivery.net/embed/{$library_id}/{$videoId}");
+            }
+        
+            update_post_meta($postId, '_bunny_video_id', $videoId);
+            update_post_meta($postId, '_bunny_playback_mode', 'mp4'); // Default to MP4
+        }        
+
+        $pullZone = get_option('bunny_net_pull_zone', '');
+        $playbackUrl = "https://{$pullZone}/{$videoId}/play_720p.mp4"; // Default 720p resolution
 
         return [
             'videoId'   => $videoId,
-            'videoUrl'  => $playbackUrl,
-        ];
+            'videoUrl'  => $playbackUrl, // Dynamically constructed MP4 URL
+            'iframeUrl' => get_post_meta($postId, '_bunny_iframe_url', true), // Retrieve stored iframe URL
+        ];        
+
     }
     
     /**
