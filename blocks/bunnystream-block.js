@@ -194,46 +194,27 @@ wp.blocks.registerBlockType("bunnystream/video", {
               "Media Library"
             )
           )
-        : wp.element.createElement("iframe", {
-            src: embedUrl,
-            width: "100%",
-            height: "180",
-            style: { border: "none" },
-          })
+        : wp.element.createElement(
+            "div",
+            { style: { position: "relative", paddingTop: "56.25%" } },
+            wp.element.createElement("iframe", {
+              src: embedUrl,
+              loading: "lazy",
+              style: {
+                border: "none",
+                position: "absolute",
+                top: "0",
+                height: "100%",
+                width: "100%",
+              },
+              allow: "accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture",
+              allowFullScreen: true,
+            })
+          )
     );
   },
 
   save: function (props) {
-    if (!props.attributes.iframeUrl) {
-      return wp.element.createElement("div", {}, "No video selected.");
-    }
-
-    const params = new URLSearchParams();
-    if (props.attributes.autoplay) params.append("autoplay", "true");
-    if (props.attributes.muted) params.append("muted", "true");
-    if (props.attributes.loop) params.append("loop", "true");
-    if (props.attributes.playsInline) params.append("playsinline", "true");
-    if (props.attributes.captions) params.append("captions", props.attributes.captions);
-    if (props.attributes.preload) params.append("preload", props.attributes.preload);
-    if (props.attributes.t) params.append("t", props.attributes.t);
-    if (!props.attributes.chromecast) params.append("chromecast", "false");
-    if (props.attributes.disableAirplay) params.append("disableAirplay", "true");
-    if (props.attributes.disableIosPlayer) params.append("disableIosPlayer", "true");
-    if (props.attributes.showHeatmap) params.append("showHeatmap", "true");
-    if (props.attributes.showSpeed) params.append("showSpeed", "true");
-
-    const baseUrl = props.attributes.iframeUrl.split("?")[0];
-    const embedUrl = `${baseUrl}?${params.toString().replace(/&amp;/g, "&")}`;
-
-    // console.log("Final Iframe URL on Frontend:", embedUrl);
-    // console.log("Saved attributes in Frontend:", props.attributes);
-
-    return wp.element.createElement("iframe", {
-      src: embedUrl,
-      width: "100%",
-      height: "315",
-      allow: "autoplay; fullscreen",
-      allowFullScreen: true,
-    });
+    return null; // Rendering handled by bunnystream_render_video() in main plugin file
   },
 });

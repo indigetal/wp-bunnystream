@@ -81,7 +81,7 @@ function bunnystream_render_video($attributes) {
 
     if (empty($iframe_url)) {
         return '<p style="text-align:center; padding:10px; background:#f5f5f5; border-radius:5px; color: red;">
-            ' . esc_html__("No video URL found for this post. Please ensure a video is selected in the block editor and check the Media Library for _bunny_iframe_url.", "bunnystream") . 
+            ' . esc_html__("No video URL found. Please ensure a video is selected.", "bunnystream") . 
             '<br><small>' . esc_html__("Post ID: ", "bunnystream") . esc_html($post_id) . '</small></p>';
     }
 
@@ -106,7 +106,14 @@ function bunnystream_render_video($attributes) {
     // Log final embed URL
     //error_log("bunnystream_render_video() - Final Embed URL: " . $embed_url);
 
-    return "<iframe src='{$embed_url}' allow='accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;' allowfullscreen='true'></iframe>";
+    return "<div style='position: relative; padding-top: 56.25%;'>
+            <iframe src='{$embed_url}' 
+                loading='lazy' 
+                style='border: none; position: absolute; top: 0; height: 100%; width: 100%;' 
+                allow='accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;' 
+                allowfullscreen='true'>
+            </iframe>
+        </div>";
 }
 
 /**
