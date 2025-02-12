@@ -58,9 +58,9 @@ wp.blocks.registerBlockType("bunnystream/video", {
         }).then((attachmentData) => {
           if (attachmentData?.meta?._bunny_iframe_url) {
             setAttributes({ iframeUrl: attachmentData.meta._bunny_iframe_url });
-            console.log("Updated iframe URL:", attachmentData.meta._bunny_iframe_url);
+            // console.log("Updated iframe URL:", attachmentData.meta._bunny_iframe_url);
           } else {
-            console.warn("No _bunny_iframe_url found in postmeta.");
+            // console.warn("No _bunny_iframe_url found in postmeta.");
           }
         });
       });
@@ -90,12 +90,12 @@ wp.blocks.registerBlockType("bunnystream/video", {
 
         embedUrl = url.origin + url.pathname + "?" + params.toString();
       } catch (error) {
-        console.error("Invalid iframe URL:", embedUrl, error);
+        // console.error("Invalid iframe URL:", embedUrl, error);
       }
     }
 
     // Log the fully constructed iframe URL
-    console.log("Final Iframe URL in Block:", embedUrl);
+    // console.log("Final Iframe URL in Block:", embedUrl);
 
     return wp.element.createElement(
       wp.element.Fragment,
@@ -176,8 +176,8 @@ wp.blocks.registerBlockType("bunnystream/video", {
     const baseUrl = props.attributes.iframeUrl.split("?")[0];
     const embedUrl = `${baseUrl}?${params.toString().replace(/&amp;/g, "&")}`;
 
-    console.log("Final Iframe URL on Frontend:", embedUrl);
-    console.log("Saved attributes in Frontend:", props.attributes);
+    // console.log("Final Iframe URL on Frontend:", embedUrl);
+    // console.log("Saved attributes in Frontend:", props.attributes);
 
     return wp.element.createElement("iframe", {
       src: embedUrl,

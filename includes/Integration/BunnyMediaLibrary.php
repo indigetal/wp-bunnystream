@@ -177,12 +177,6 @@ class BunnyMediaLibrary {
             update_post_meta($post_id, '_bunny_video_id', $result['video_id']);
             BunnyLogger::log("handleAttachmentMetadata: Offloading succeeded for post ID {$post_id}.", 'info');
         }  
-    
-        // Store `_bunny_iframe_url`
-        if (isset($result['iframeUrl'])) {
-            update_post_meta($post_id, '_bunny_iframe_url', esc_url($result['iframeUrl']));
-            BunnyLogger::log("handleAttachmentMetadata: Saved _bunny_iframe_url for post ID {$post_id}: " . esc_url($result['iframeUrl']), 'info');
-        }
     }       
     
     /**

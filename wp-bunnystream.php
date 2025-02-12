@@ -45,18 +45,18 @@ add_action('plugins_loaded', 'wp_bunnystream_init');
 function wp_bunnystream_register_block() {
     wp_register_script(
         'bunnystream-block-editor',
-        plugins_url('assets/js/bunnystream-block.js', __FILE__),
+        plugins_url('blocks/bunnystream-block.php', __FILE__),
         ['wp-blocks', 'wp-editor', 'wp-components', 'wp-element', 'wp-i18n', 'wp-block-editor'],
-        filemtime(plugin_dir_path(__FILE__) . 'assets/js/bunnystream-block.js'),
+        filemtime(plugin_dir_path(__FILE__) . 'blocks/bunnystream-block.php'),
         true
     );
-
+    
     wp_register_style(
         'bunnystream-block-style',
-        plugins_url('assets/css/bunny-block.css', __FILE__),
+        plugins_url('blocks/bunny-block.css', __FILE__),
         [],
-        filemtime(plugin_dir_path(__FILE__) . 'assets/css/bunny-block.css')
-    );
+        filemtime(plugin_dir_path(__FILE__) . 'blocks/bunny-block.css')
+    );    
 
     register_block_type('bunnystream/video', array(
         'editor_script' => 'bunnystream-block-editor',
@@ -75,9 +75,9 @@ function bunnystream_render_video($attributes) {
     $iframe_url = !empty($attributes['iframeUrl']) ? $attributes['iframeUrl'] : get_post_meta($post_id, '_bunny_iframe_url', true);
 
     // Debugging: Log metadata and attributes
-    $meta = get_post_meta($post_id);
-    error_log("bunnystream_render_video() - Full Post Meta for $post_id: " . print_r($meta, true));
-    error_log("bunnystream_render_video() - Attributes: " . print_r($attributes, true));
+    //$meta = get_post_meta($post_id);
+    //error_log("bunnystream_render_video() - Full Post Meta for $post_id: " . print_r($meta, true));
+    //error_log("bunnystream_render_video() - Attributes: " . print_r($attributes, true));
 
     if (empty($iframe_url)) {
         return '<p style="text-align:center; padding:10px; background:#f5f5f5; border-radius:5px; color: red;">
@@ -104,7 +104,7 @@ function bunnystream_render_video($attributes) {
     $embed_url = esc_url($iframe_url) . (!empty($params) ? '?' . implode("&", $params) : '');
 
     // Log final embed URL
-    error_log("bunnystream_render_video() - Final Embed URL: " . $embed_url);
+    //error_log("bunnystream_render_video() - Final Embed URL: " . $embed_url);
 
     return "<iframe src='{$embed_url}' allow='accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;' allowfullscreen='true'></iframe>";
 }
