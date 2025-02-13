@@ -145,6 +145,7 @@ wp.blocks.registerBlockType("bunnystream/video", {
         wp.element.createElement(
           wp.components.PanelBody,
           { title: "General", initialOpen: true },
+
           wp.element.createElement(
             wp.components.Button,
             {
@@ -159,54 +160,128 @@ wp.blocks.registerBlockType("bunnystream/video", {
                 justifyContent: "center",
                 alignItems: "center",
               },
-              onClick: () => {
-                const selectionModal = new wp.media.view.MediaFrame.Select({
-                  title: "Select or Upload Video",
-                  library: { type: "video" },
-                  button: { text: "Select Video" },
-                  multiple: false,
-                });
-
-                selectionModal.on("select", function () {
-                  const attachment = selectionModal.state().get("selection").first().toJSON();
-                  wp.apiFetch({
-                    path: `/wp/v2/media/${attachment.id}?_fields=id,meta`,
-                    method: "GET",
-                  }).then((attachmentData) => {
-                    if (attachmentData?.meta?._bunny_iframe_url) {
-                      setAttributes({ iframeUrl: attachmentData.meta._bunny_iframe_url });
-                    }
-                  });
-                });
-
-                selectionModal.open();
-              },
+              onClick: openMediaUploader, // Use the existing function
             },
             "Upload Video"
           ),
 
+          // Caption Field
+          wp.element.createElement(wp.components.TextControl, {
+            label: "Captions",
+            help: "Controls the default captions file that will be shown",
+            value: attributes.captions,
+            onChange: (value) => setAttributes({ captions: value }),
+          }),
+
+          // Start Time Field
+          wp.element.createElement(wp.components.TextControl, {
+            label: "Start Time",
+            help: "Sets the video start time. Accepts Xs, 1h20m45s, hh:mm:ss, or a simple numeric value interpreted as seconds",
+            value: attributes.t,
+            onChange: (value) => setAttributes({ t: value }),
+          }),
+
+          // Toggle Controls with Tooltips
           wp.element.createElement(wp.components.ToggleControl, {
-            label: "Autoplay",
+            label: wp.element.createElement(
+              wp.components.Tooltip,
+              {
+                text: "Controls whether the video should start playing automatically. Due to browser restrictions, auto-play may not always work.",
+              },
+              wp.element.createElement("span", {}, "Autoplay")
+            ),
             checked: attributes.autoplay,
             onChange: (value) => setAttributes({ autoplay: value }),
           }),
           wp.element.createElement(wp.components.ToggleControl, {
-            label: "Loop",
+            label: wp.element.createElement(
+              wp.components.Tooltip,
+              { text: "Replays the video automatically after it ends, creating a continuous loop." },
+              wp.element.createElement("span", {}, "Loop")
+            ),
             checked: attributes.loop,
             onChange: (value) => setAttributes({ loop: value }),
           }),
           wp.element.createElement(wp.components.ToggleControl, {
-            label: "Muted",
+            label: wp.element.createElement(
+              wp.components.Tooltip,
+              { text: "If set to true, the player starts in mute mode (no sound)." },
+              wp.element.createElement("span", {}, "Muted")
+            ),
             checked: attributes.muted,
             onChange: (value) => setAttributes({ muted: value }),
           }),
           wp.element.createElement(wp.components.ToggleControl, {
-            label: "Plays Inline",
+            label: wp.element.createElement(
+              wp.components.Tooltip,
+              { text: "Allows the video to play inline on mobile devices rather than forcing fullscreen playback." },
+              wp.element.createElement("span", {}, "Plays Inline")
+            ),
             checked: attributes.playsInline,
             onChange: (value) => setAttributes({ playsInline: value }),
+          }),
+          wp.element.createElement(wp.components.ToggleControl, {
+            label: wp.element.createElement(
+              wp.components.Tooltip,
+              { text: "Enables or disables Chromecast support within the player." },
+              wp.element.createElement("span", {}, "Chromecast")
+            ),
+            checked: attributes.chromecast,
+            onChange: (value) => setAttributes({ chromecast: value }),
+          }),
+          wp.element.createElement(wp.components.ToggleControl, {
+            label: wp.element.createElement(
+              wp.components.Tooltip,
+              {
+                text: "When set to true, the player immediately starts downloading the video so playback begins more quickly.",
+              },
+              wp.element.createElement("span", {}, "Preload")
+            ),
+            checked: attributes.preload,
+            onChange: (value) => setAttributes({ preload: value }),
+          }),
+          wp.element.createElement(wp.components.ToggleControl, {
+            label: wp.element.createElement(
+              wp.components.Tooltip,
+              { text: "Disables AirPlay support when set to true." },
+              wp.element.createElement("span", {}, "Disable AirPlay")
+            ),
+            checked: attributes.disableAirplay,
+            onChange: (value) => setAttributes({ disableAirplay: value }),
+          }),
+          wp.element.createElement(wp.components.ToggleControl, {
+            label: wp.element.createElement(
+              wp.components.Tooltip,
+              { text: "Disables the native iOS player (used typically for fullscreen handling on iOS)." },
+              wp.element.createElement("span", {}, "Disable iOS Player")
+            ),
+            checked: attributes.disableIosPlayer,
+            onChange: (value) => setAttributes({ disableIosPlayer: value }),
+          }),
+          wp.element.createElement(wp.components.ToggleControl, {
+            label: wp.element.createElement(
+              wp.components.Tooltip,
+              {
+                text: "Displays a heatmap on the progress bar when set to true, highlighting viewer engagement at different points in the video.",
+              },
+              wp.element.createElement("span", {}, "Show Heatmap")
+            ),
+            checked: attributes.showHeatmap,
+            onChange: (value) => setAttributes({ showHeatmap: value }),
+          }),
+          wp.element.createElement(wp.components.ToggleControl, {
+            label: "Show Speed Controls",
+            label: wp.element.createElement(
+              wp.components.Tooltip,
+              { text: "Shows a speed control within the player, allowing playback rate adjustments." },
+              wp.element.createElement("span", {}, "Show Speed Controls")
+            ),
+            checked: attributes.showSpeed,
+            onChange: (value) => setAttributes({ showSpeed: value }),
           })
-        )
+        ) // <-- Closing parenthesis for the toggle controls list
       ),
+
       !embedUrl
         ? wp.element.createElement(
             wp.components.Placeholder,

@@ -74,46 +74,39 @@ function bunnystream_render_video($attributes) {
     $post_id = get_the_ID();
     $iframe_url = !empty($attributes['iframeUrl']) ? $attributes['iframeUrl'] : get_post_meta($post_id, '_bunny_iframe_url', true);
 
-    // Debugging: Log metadata and attributes
-    //$meta = get_post_meta($post_id);
-    //error_log("bunnystream_render_video() - Full Post Meta for $post_id: " . print_r($meta, true));
-    //error_log("bunnystream_render_video() - Attributes: " . print_r($attributes, true));
-
     if (empty($iframe_url)) {
         return '<p style="text-align:center; padding:10px; background:#f5f5f5; border-radius:5px; color: red;">
-            ' . esc_html__("No video URL found. Please ensure a video is selected.", "bunnystream") . 
+            ' . esc_html__("No video URL found for this post. Please ensure a video is selected in the block editor and check the Media Library for _bunny_iframe_url.", "bunnystream") . 
             '<br><small>' . esc_html__("Post ID: ", "bunnystream") . esc_html($post_id) . '</small></p>';
     }
 
     // Construct query parameters from block attributes
     $params = [];
-    if (isset($attributes['autoplay']) && $attributes['autoplay']) $params[] = "autoplay=true";
-    if (isset($attributes['muted']) && $attributes['muted']) $params[] = "muted=true";
-    if (isset($attributes['loop']) && $attributes['loop']) $params[] = "loop=true";
-    if (isset($attributes['playsInline']) && $attributes['playsInline']) $params[] = "playsinline=true";
+    if (!empty($attributes['autoplay'])) $params[] = "autoplay=true";
+    if (!empty($attributes['muted'])) $params[] = "muted=true";
+    if (!empty($attributes['loop'])) $params[] = "loop=true";
+    if (!empty($attributes['playsInline'])) $params[] = "playsinline=true";
     if (!empty($attributes['captions'])) $params[] = "captions=" . urlencode($attributes['captions']);
-    if (isset($attributes['preload']) && $attributes['preload']) $params[] = "preload=" . urlencode($attributes['preload']);
+    if (isset($attributes['preload'])) $params[] = "preload=" . ($attributes['preload'] ? "true" : "false");
     if (!empty($attributes['t'])) $params[] = "t=" . urlencode($attributes['t']);
-    if (isset($attributes['chromecast']) && !$attributes['chromecast']) $params[] = "chromecast=false";
-    if (isset($attributes['disableAirplay']) && $attributes['disableAirplay']) $params[] = "disableAirplay=true";
-    if (isset($attributes['disableIosPlayer']) && $attributes['disableIosPlayer']) $params[] = "disableIosPlayer=true";
-    if (isset($attributes['showHeatmap']) && $attributes['showHeatmap']) $params[] = "showHeatmap=true";
-    if (isset($attributes['showSpeed']) && $attributes['showSpeed']) $params[] = "showSpeed=true";
+    if (!empty($attributes['chromecast'])) $params[] = "chromecast=" . ($attributes['chromecast'] ? "true" : "false");
+    if (!empty($attributes['disableAirplay'])) $params[] = "disableAirplay=" . ($attributes['disableAirplay'] ? "true" : "false");
+    if (!empty($attributes['disableIosPlayer'])) $params[] = "disableIosPlayer=" . ($attributes['disableIosPlayer'] ? "true" : "false");
+    if (!empty($attributes['showHeatmap'])) $params[] = "showHeatmap=" . ($attributes['showHeatmap'] ? "true" : "false");
+    if (!empty($attributes['showSpeed'])) $params[] = "showSpeed=" . ($attributes['showSpeed'] ? "true" : "false");
 
     // Construct the final iframe URL
     $embed_url = esc_url($iframe_url) . (!empty($params) ? '?' . implode("&", $params) : '');
 
-    // Log final embed URL
-    //error_log("bunnystream_render_video() - Final Embed URL: " . $embed_url);
-
+    // Return structured HTML matching Bunny’s documentation
     return "<div style='position: relative; padding-top: 56.25%;'>
-            <iframe src='{$embed_url}' 
-                loading='lazy' 
-                style='border: none; position: absolute; top: 0; height: 100%; width: 100%;' 
-                allow='accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;' 
-                allowfullscreen='true'>
-            </iframe>
-        </div>";
+               <iframe src='{$embed_url}' 
+                   loading='lazy' 
+                   style='border: none; position: absolute; top: 0; height: 100%; width: 100%;' 
+                   allow='accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;' 
+                   allowfullscreen='true'>
+               </iframe>
+           </div>";
 }
 
 /**
