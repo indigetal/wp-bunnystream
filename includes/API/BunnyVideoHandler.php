@@ -257,4 +257,60 @@ class BunnyVideoHandler {
         }
         return true;
     }
+
+    /**
+     * Deletes a video from Bunny.net's video library.
+     *
+     * @param string $library_id The Bunny.net library ID.
+     * @param string $video_id   The Bunny.net video ID to be deleted.
+     * @return bool True on success, false on failure.
+     */
+    public function deleteVideo($library_id, $video_id) {
+        // Validate input parameters
+        if (empty($library_id) || empty($video_id)) {
+            BunnyLogger::log("deleteVideo: Missing library ID or video ID. Library ID: {$library_id}, Video ID: {$video_id}", 'error');
+            return false;
+        }
+
+        // Construct the API endpoint
+        $deleteEndpoint = "library/{$library_id}/videos/{$video_id}";
+
+        // Execute the DELETE request using sendJsonToBunny
+        $response = $this->apiClient->sendJsonToBunny($deleteEndpoint, 'DELETE');
+
+        // Handle response errors
+        if (is_wp_error($response)) {
+            BunnyLogger::log("deleteVideo: API request failed. Error: " . $response->get_error_message(), 'error');
+            return false;
+        }
+
+        // Ensure response is an array and contains expected fields
+        if (!is_array($response) || !isset($response['success'], $response['statusCode'])) {
+            BunnyLogger::log("deleteVideo: Unexpected response structure from Bunny.net. Response: " . json_encode($response), 'error');
+            return false;
+        }
+
+        // Extract statusCode from the response body
+        $statusCode = (int) $response['statusCode'];
+        $responseBody = json_encode($response);
+
+        // Handle responses based on Bunny.net API documentation
+        switch ($statusCode) {
+            case 200:
+                BunnyLogger::log("deleteVideo: Successfully deleted video ID {$video_id} from library {$library_id}. Response: {$responseBody}", 'info');
+                return true;
+            case 401:
+                BunnyLogger::log("deleteVideo: Authorization failed. Check your Bunny.net Access Key.", 'error');
+                return false;
+            case 404:
+                BunnyLogger::log("deleteVideo: Video ID {$video_id} not found in library {$library_id}. It may have already been deleted.", 'warning');
+                return true; // No need to retry, since it's already gone.
+            case 500:
+                BunnyLogger::log("deleteVideo: Internal server error at Bunny.net. Retry may be required.", 'error');
+                return false;
+            default:
+                BunnyLogger::log("deleteVideo: Unexpected response from Bunny.net. Status Code: {$statusCode}, Response: {$responseBody}", 'error');
+                return false;
+        }
+    }
 }

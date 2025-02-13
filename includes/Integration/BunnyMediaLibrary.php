@@ -1,6 +1,7 @@
 <?php
 namespace WP_BunnyStream\Integration;
 
+use WP_BunnyStream\API\BunnyApiClient;
 use WP_BunnyStream\Utils\BunnyLogger;
 use WP_BunnyStream\API\BunnyVideoHandler;
 use WP_BunnyStream\API\BunnyCollectionHandler;
@@ -10,12 +11,14 @@ if (!defined('ABSPATH')) {
 }
 
 class BunnyMediaLibrary {
+    private $apiClient;
 
     public function __construct() {
-
+        $this->apiClient = BunnyApiClient::getInstance();
         add_filter('wp_handle_upload', [$this, 'interceptUpload'], 10, 2);
         add_filter('wp_get_attachment_url', [$this, 'filterBunnyVideoURL'], 10, 2);
         add_action('add_attachment', [$this, 'handleAttachmentMetadata'], 10, 1);
+        add_action('delete_attachment', [$this, 'handleAttachmentDeletion']);
     }
 
     /**
@@ -177,7 +180,32 @@ class BunnyMediaLibrary {
             update_post_meta($post_id, '_bunny_video_id', $result['video_id']);
             BunnyLogger::log("handleAttachmentMetadata: Offloading succeeded for post ID {$post_id}.", 'info');
         }  
-    }       
+    }     
+    
+    /**
+     * Handles the deletion of a WordPress media attachment.
+     *
+     * @param int $post_id The ID of the deleted attachment.
+     */
+    public function handleAttachmentDeletion($post_id) {
+        // Retrieve the Bunny.net video ID
+        $bunny_video_id = get_post_meta($post_id, '_bunny_video_id', true);
+
+        // Ensure video ID exists before proceeding
+        if (!empty($bunny_video_id)) {
+            // Retrieve the library ID using the existing API client method
+            $library_id = $this->apiClient->getLibraryId();
+
+            // Ensure library ID exists
+            if (!empty($library_id)) {
+                // Get BunnyVideoHandler instance
+                $video_handler = \WP_BunnyStream\API\BunnyVideoHandler::getInstance();
+
+                // Call the deleteVideo method to remove the video from Bunny.net
+                $video_handler->deleteVideo($library_id, $bunny_video_id);
+            }
+        }
+    }
     
     /**
      * Override wp_get_attachment_metadata to use Bunny.net thumbnails if available.
