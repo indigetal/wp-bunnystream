@@ -8,20 +8,16 @@ Stable tag: 0.1.0
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
-Streamline your video management with WP Bunny Stream. Automatically upload, organize, and stream videos using Bunny.net's HTTP API, fully integrated with the WordPress Media Library.
+WP Bunny Stream seamlessly integrates Bunny.net's HTTP API with the WordPress Media Library, enabling high-speed, buffer-free video offloading and playback. Videos uploaded to the Media Library are automatically offloaded to Bunny.net, ensuring optimized performance and reduced server load.
+Key Features:
 
-== Description ==
+- Effortless Offloading – Automatically offloads videos to Bunny.net when uploaded to the Media Library and removes them when deleted.
+- MP4 Compatibility – Uses Bunny.net's MP4 URL by default to ensure full compatibility with the Media Library and all WordPress video blocks.
+- Automated Organization – Creates and assigns a user-specific collection at Bunny.net when a user uploads their first video, keeping libraries organized.
+- User Cleanup – Deletes a user's assigned collection and all its videos when their WordPress account is removed.
+- Enhanced Gutenberg Block – Provides a fully-featured Bunny Embed Player block, allowing users to configure all available parameters directly from the block settings.
 
-WP Bunny Stream enables video offloading and streaming management by integrating Bunny.net's HTTP API with the WordPress Media Library. Videos uploaded to the Media Library are automatically offloaded to Bunny.net, ensuring high-speed, bufferless streaming. 
-
-Key features:
-
-- Automatically upload videos to Bunny.net when added to the WordPress Media Library.
-- Organize videos into user-specific collections for better management and scalability.
-- Ensure seamless streaming with Bunny.net's global CDN infrastructure.
-- Fully integrates with WordPress workflows, enhancing the user experience.
-
-No need for manual video handling—WP Bunny Stream takes care of everything behind the scenes, letting you focus on your content.
+No manual video handling needed—WP Bunny Stream automates the entire process, letting you focus on your content.
 
 == Installation ==
 
