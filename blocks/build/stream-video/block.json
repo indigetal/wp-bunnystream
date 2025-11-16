@@ -1,0 +1,88 @@
+{
+  "apiVersion": 3,
+  "name": "bunnycdn/block-stream-video",
+  "title": "bunny.net Stream Video",
+  "category": "media",
+  "description": "Upload or embed a bunny.net Stream Video",
+  "keywords": [
+    "bunnycdn",
+    "bunny.net",
+    "bunny",
+    "bunnynet",
+    "stream",
+    "video",
+    "movie"
+  ],
+  "textdomain": "bunnycdn",
+  "icon": "bunnycdn",
+  "attributes": {
+    "library_id": {
+      "type": "string"
+    },
+    "collection_id": {
+      "type": "string"
+    },
+    "video_id": {
+      "type": "string"
+    },
+    "token_authentication": {
+      "type": "boolean"
+    },
+    "autoplay": {
+      "type": "boolean"
+    },
+    "captions": {
+      "type": "string"
+    },
+    "chromecast": {
+      "type": "boolean"
+    },
+    "disableAirplay": {
+      "type": "boolean"
+    },
+    "disableIosPlayer": {
+      "type": "boolean"
+    },
+    "loop": {
+      "type": "boolean"
+    },
+    "muted": {
+      "type": "boolean"
+    },
+    "playsinline": {
+      "type": "boolean"
+    },
+    "preload": {
+      "type": "boolean"
+    },
+    "rememberPosition": {
+      "type": "boolean"
+    },
+    "responsive": {
+      "type": "boolean"
+    },
+    "showHeatmap": {
+      "type": "boolean"
+    },
+    "showSpeed": {
+      "type": "boolean"
+    },
+    "t": {
+      "type": "string"
+    }
+  },
+  "supports": {
+    "align": [
+      "wide",
+      "full"
+    ],
+    "spacing": {
+      "margin": true
+    },
+    "interactivity": {
+      "clientNavigation": true
+    }
+  },
+  "editorScript": "file:./index.js",
+  "editorStyle": "file:./index.css"
+}
