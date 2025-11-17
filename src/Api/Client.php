@@ -19,6 +19,7 @@ declare(strict_types=1);
 
 namespace Bunny\Wordpress\Api;
 
+use Bunny\Wordpress\Api\Billing\Info as BillingInfo;
 use Bunny\Wordpress\Api\Exception\AuthorizationException;
 use Bunny\Wordpress\Api\Exception\InvalidJsonException;
 use Bunny\Wordpress\Api\Exception\NotFoundException;
@@ -79,6 +80,14 @@ class Client
         }
 
         return new User($name, $data['Email']);
+    }
+
+    public function getBilling(): BillingInfo
+    {
+        $data = $this->request('GET', 'billing');
+        $balance = (float) $data['Balance'];
+
+        return new BillingInfo((int) floor($balance * 100));
     }
 
     public function getStorageZone(int $id): Storagezone\Details

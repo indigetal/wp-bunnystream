@@ -220,4 +220,9 @@ class Container
     {
         return $this->container->getStreamConfig();
     }
+
+    public function isAgencyMode(): bool
+    {
+        return $this->container->isAgencyMode();
+    }
 }

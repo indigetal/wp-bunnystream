@@ -54,9 +54,9 @@ if (!defined('ABSPATH')) {
 
 /*
 Plugin Name: Bunny Offload Media Library
-Plugin URI: https://github.com/indigetal/bunny-offload
+Plugin URI: https://github.com/indigetal/bunny-wp-offload
 Description: Automatically offload WordPress media to Bunny.net cloud storage. Simplified fork focused on media offloading (Storage + Stream) without CDN management complexity.
-Version: 1.0.3-alpha
+Version: 1.0.4-alpha
 Requires at least: 6.7
 Tested up to: 6.8
 Requires PHP: 8.1
@@ -68,7 +68,7 @@ Text Domain: bunny-offload
 Domain Path: /languages
 */
 
-const BUNNY_OFFLOAD_VERSION = '1.0.3-alpha';
+const BUNNY_OFFLOAD_VERSION = '1.0.4-alpha';
 const BUNNY_OFFLOAD_FORKED_FROM = '2.3.5'; // Original bunny.net plugin version
 
 require_once __DIR__.'/src/functions.php';

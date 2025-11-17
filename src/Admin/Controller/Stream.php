@@ -33,12 +33,7 @@ class Stream implements ControllerInterface
 
     public function run(bool $isAjax): void
     {
-        $cdnConfig = $this->container->getCdnConfig();
-        if ($cdnConfig->isAgencyMode()) {
-            $this->container->renderTemplateFile('error.api-unavailable.php', ['error' => 'There is no API key configured.']);
-
-            return;
-        }
+        // Agency mode check removed - CDN config no longer exists
         $showSuccess = false;
         $apiAvailable = false;
         if (!empty($_POST)) {

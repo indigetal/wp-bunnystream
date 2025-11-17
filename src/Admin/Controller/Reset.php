@@ -37,7 +37,7 @@ class Reset implements ControllerInterface
         $canReset = 0 === $attachmentCount[AttachmentCounter::BUNNY];
         $error = null;
         $successMessage = null;
-        $isAgencyMode = $this->container->getCdnConfig()->isAgencyMode();
+        $isAgencyMode = $this->container->isAgencyMode();
         if (!empty($_POST['reset']) && 'yes' === $_POST['reset']) {
             check_admin_referer('bunnycdn-save-reset');
             if ($canReset && isset($_POST['reset_confirmed']) && '1' === $_POST['reset_confirmed']) {

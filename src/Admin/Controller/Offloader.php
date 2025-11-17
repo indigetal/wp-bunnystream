@@ -61,38 +61,20 @@ class Offloader implements ControllerInterface
 
             return;
         }
-        $cdnConfig = $this->container->getCdnConfig();
         $offloaderConfig = $this->container->getOffloaderConfig();
-        $isRequestAccelerated = false;
         $showApiKeyAlert = false;
-        $showCdnAccelerationAlert = false;
+        
         try {
             $this->container->getOffloaderUtils()->updateStoragePassword();
-            $showCdnAccelerationAlert = $this->container->getCdnAcceleration()->shouldShowAlert();
-            $isRequestAccelerated = $this->container->getCdnAcceleration()->isRequestAccelerated();
         } catch (AuthorizationException $e) {
             $showApiKeyAlert = true;
         } catch (\Exception $e) {
             $errorMessage = 'The Bunny API is currently unavailable. Some configurations cannot be changed at the moment.'.\PHP_EOL.\PHP_EOL.'Details: '.$e->getMessage();
-            $isRequestAccelerated = $cdnConfig->isAccelerated();
         }
-        if ($cdnConfig->isAgencyMode()) {
-            $this->container->renderTemplateFile('error.api-unavailable.php', ['error' => 'There is no API key configured.']);
-
-            return;
-        }
+        
+        // Simplified: Remove CDN acceleration checks - focus on offloader only
         if (!$offloaderConfig->isConfigured() && $this->container->hasCustomDirectories()) {
             $this->container->renderTemplateFile('offloader.unsupported.php', [], ['cssClass' => 'offloader']);
-
-            return;
-        }
-        if ($cdnConfig->isAccelerated() && !$offloaderConfig->isEnabled() && !$isRequestAccelerated) {
-            $this->container->renderTemplateFile('offloader.warning.php', ['attachments' => $attachmentCount, 'config' => $offloaderConfig], ['cssClass' => 'offloader']);
-
-            return;
-        }
-        if (!$cdnConfig->isAccelerated()) {
-            $this->container->renderTemplateFile('offloader.instructions.php', ['attachments' => $attachmentCount, 'config' => $offloaderConfig, 'showApiKeyAlert' => $showApiKeyAlert, 'showCdnAccelerationAlert' => $showCdnAccelerationAlert, 'suggestAcceleration' => $isRequestAccelerated], ['cssClass' => 'offloader']);
 
             return;
         }
@@ -133,11 +115,19 @@ class Offloader implements ControllerInterface
                 }
             }
         }
-        // CDN URL removed - CDN section no longer exists
-        // Auto-detection of existing edge rules removed - CDN/Pullzone features out of scope
-        // Offloader must be configured through wizard (creates Storage Zone directly)
-        $cdnUrl = ''; // CDN section removed, keeping variable for template compatibility (to be removed in Priority 3)
+        // Simplified offloader configuration page - CDN features removed
         $showOffloaderSyncErrors = $offloaderConfig->isEnabled() && $offloaderConfig->isSyncExisting() && $this->container->getAttachmentCounter()->countWithError() > 0;
-        $this->container->renderTemplateFile('offloader.config.php', ['attachments' => $attachmentCount, 'attachmentsWithError' => $this->container->getAttachmentCounter()->countWithError(), 'cdnUrl' => $cdnUrl, 'config' => $offloaderConfig, 'errorMessage' => $errorMessage, 'replicationRegions' => OffloaderConfig::STORAGE_REGIONS_SSD, 'showApiKeyAlert' => $showApiKeyAlert, 'showCdnAccelerationAlert' => $showCdnAccelerationAlert, 'showOffloaderSyncErrors' => $showOffloaderSyncErrors, 'successMessage' => $successMessage, 'viewOriginFileUrlTemplateSafe' => $this->container->getSectionUrl('attachment', ['location' => 'origin', 'id' => '{{id}}']), 'viewStorageFileUrlTemplateSafe' => $this->container->getSectionUrl('attachment', ['location' => 'storage', 'id' => '{{id}}'])], ['cssClass' => 'offloader']);
+        $this->container->renderTemplateFile('offloader.config.php', [
+            'attachments' => $attachmentCount, 
+            'attachmentsWithError' => $this->container->getAttachmentCounter()->countWithError(), 
+            'config' => $offloaderConfig, 
+            'errorMessage' => $errorMessage, 
+            'replicationRegions' => OffloaderConfig::STORAGE_REGIONS_SSD, 
+            'showApiKeyAlert' => $showApiKeyAlert, 
+            'showOffloaderSyncErrors' => $showOffloaderSyncErrors, 
+            'successMessage' => $successMessage, 
+            'viewOriginFileUrlTemplateSafe' => $this->container->getSectionUrl('attachment', ['location' => 'origin', 'id' => '{{id}}']), 
+            'viewStorageFileUrlTemplateSafe' => $this->container->getSectionUrl('attachment', ['location' => 'storage', 'id' => '{{id}}'])
+        ], ['cssClass' => 'offloader']);
     }
 }

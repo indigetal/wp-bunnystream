@@ -45,61 +45,49 @@ class Overview implements ControllerInterface
         }
         wp_enqueue_script('echarts', $this->container->assetUrl('echarts.min.js'), ['jquery']);
         $this->container->getOffloaderUtils()->updateStoragePassword();
-        // CDN acceleration alert removed - CDN features out of scope
         $this->container->renderTemplateFile('overview.php', [], ['cssClass' => 'overview loading']);
     }
 
     private function handleGetApiData(): void
     {
-        // Simplified to Storage Zone metrics only (Pullzone statistics removed)
+        // Simplified Overview: Billing + basic Storage Zone info only
+        // No Pullzone/CDN statistics required
         $api = $this->container->getApiClient();
         
         try {
             $billing = $api->getBilling();
         } catch (\Exception $e) {
-            wp_send_json_error(['type' => 'error', 'message' => 'The Bunny API is currently unavailable. Please try again later.'.\PHP_EOL.\PHP_EOL.'Details: '.$e->getMessage()]);
-
+            wp_send_json_error([
+                'type' => 'error', 
+                'message' => 'The Bunny API is currently unavailable. Please try again later.'.\PHP_EOL.\PHP_EOL.'Details: '.$e->getMessage()
+            ]);
             return;
         }
 
-        // Get Storage Zone bandwidth statistics (if configured)
+        // Storage Zone basic info (if configured for offloading)
         $storageZoneId = $this->container->getOffloaderConfig()->getStoragezoneId();
-        $monthBandwidth = '0 B';
-        $monthCharges = '$0.00';
-        $bandwidthAvgCost = '$0.0000';
+        $storageName = 'Not configured';
         
-        if (null !== $storageZoneId) {
+        if (null !== $storageZoneId && $storageZoneId > 0) {
             try {
                 $storageDetails = $api->getStorageZone($storageZoneId);
-                // Note: Storage Zone API doesn't provide same detailed stats as Pullzone
-                // Future enhancement: aggregate from Storage Zone usage data
+                $storageName = $storageDetails->getName();
             } catch (\Exception $e) {
-                // Storage zone stats unavailable, use defaults
+                $storageName = 'Error loading storage zone';
             }
         }
 
-        // Simplified response - billing and basic bandwidth only
-        // Cache and request statistics removed (CDN/Pullzone metrics)
+        // Simple response: just billing balance and storage zone name
+        // Note: Detailed bandwidth/cache/request statistics removed (were Pullzone-specific)
         wp_send_json_success([
             'overview' => [
                 'billing' => [
                     'balance' => $billing->getBalanceHumanReadable()
                 ],
-                'month' => [
-                    'bandwidth' => $monthBandwidth,
-                    'bandwidth_avg_cost' => $bandwidthAvgCost,
-                    'charges' => $monthCharges
+                'storage' => [
+                    'name' => $storageName,
+                    'id' => $storageZoneId
                 ]
-            ],
-            'bandwidth' => [
-                'total' => $monthBandwidth,
-                'trend' => [
-                    'value' => '0%',
-                    'direction' => 'equal'
-                ]
-            ],
-            'chart' => [
-                'bandwidth' => []
             ]
         ]);
     }
