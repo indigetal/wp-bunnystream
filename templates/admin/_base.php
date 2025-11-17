@@ -30,10 +30,10 @@ if (!defined('ABSPATH')) {
  */
 // Simplified menu - CDN, Optimizer, Fonts removed (use Bunny.net dashboard for CDN)
 $menuPrimary = [
-    'overview' => __('Overview', 'bunnycdn'),
+    'overview' => __('Overview', 'bunny-offload'),
     'offloader' => 'Offloader',
     'stream' => 'Stream',
-    'about' => __('About', 'bunnycdn'),
+    'about' => __('About', 'bunny-offload'),
 ];
 
 // Agency mode: hide Overview (per-client configuration on Bunny.net dashboard)
@@ -43,7 +43,7 @@ if ($isAgencyMode) {
 }
 
 $menuSecondary = [
-    'reset' => __('Reset', 'bunnycdn'),
+    'reset' => __('Reset', 'bunny-offload'),
 ];
 
 ?>

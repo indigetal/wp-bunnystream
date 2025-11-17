@@ -29,15 +29,16 @@ if (!defined('ABSPATH')) {
  */
 ?>
 <section class="bn-section">
-    <div class="bn-section__title bn-m-0">Welcome to the bunny.net configurator!</div>
+    <div class="bn-section__title bn-m-0">Welcome to Bunny Offload Media Library!</div>
 </section>
 <section class="bn-section">
-    <p class="bn-mb-3">The Integration Wizard guides you through a simple and straightforward process of integrating your WordPress website with bunny.net acceleration features. The plugin will guide you through 3 basic steps to help you get your website hopping in just a few minutes.</p>
+    <p class="bn-mb-3">The Setup Wizard guides you through a simple process of connecting your WordPress site to Bunny.net for automatic media offloading. Upload videos, images, and documents to Bunny Storage and Bunny Stream with seamless Media Library integration.</p>
+    <p class="bn-mb-3">The wizard will guide you through 3 basic steps to get your media offloading up and running in just a few minutes.</p>
     <div class="alert blue">
-        "Agency mode" is designed for administrators who manage multiple WordPress integrations with the same bunny.net dashboard login and API key. The plugin functionality in this mode is limited. Your API keys will not be kept on this WordPress instance and you will need to use dash.bunny.net to manage your settings.
+        <strong>Agency Mode</strong> is designed for administrators who manage multiple WordPress sites. API keys will not be stored on this WordPress instance. You'll manage Offloader and Stream settings via <a href="https://dash.bunny.net" target="_blank" class="bn-link--white">dash.bunny.net</a>.
     </div>
     <div>
-        <a href="<?php echo $continueUrlSafe ?>" class="bunnycdn-button bunnycdn-button--primary">Integration Wizard</a>
+        <a href="<?php echo $continueUrlSafe ?>" class="bunnycdn-button bunnycdn-button--primary">Setup Wizard</a>
         <a href="<?php echo $agencyModeUrlSafe ?>" class="bunnycdn-button bunnycdn-button--secondary bn-ms-3">Agency Mode</a>
     </div>
 </section>

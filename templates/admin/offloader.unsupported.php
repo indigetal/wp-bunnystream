@@ -29,16 +29,17 @@ if (!defined('ABSPATH')) {
 <div class="container bg-gradient bn-p-0 bn-pb-5">
     <section class="bn-section bn-section-hero bn-p-5">
         <div>
-            <h1>Bunny Storage</h1>
-            <h2>What is Content Offloading?</h2>
-            <p>Improve your website performance and user experience. Reduce load times and increase conversion rates in just a few clicks. Get hopping in under 5 minutes without writing a single line of code.</p>
+            <h1>Bunny Offloader</h1>
+            <h2>Unsupported Configuration Detected</h2>
+            <p>The Bunny Offloader automatically transfers WordPress media files to Bunny Storage for optimized delivery. However, your current WordPress configuration uses custom directory locations that are not supported.</p>
         </div>
         <img src="<?php echo esc_attr($this->assetUrl('offloader-header.svg')) ?>" alt="">
     </section>
     <div class="bn-m-5">
         <div class="alert red">
-            <p>Content Offloading is not supported on your WordPress installation.</p>
-            <p>We currently do not support installations that make use of customized <a href="https://developer.wordpress.org/advanced-administration/wordpress/wp-config/#moving-wp-content-folder" target="_blank">wp-content</a> or <a href="https://developer.wordpress.org/advanced-administration/wordpress/wp-config/#moving-uploads-folder" target="_blank">uploads</a> folder locations.</p>
+            <p><strong>Bunny Offloader is not supported on your WordPress installation.</strong></p>
+            <p>We currently do not support installations that use customized <a href="https://developer.wordpress.org/advanced-administration/wordpress/wp-config/#moving-wp-content-folder" target="_blank">wp-content</a> or <a href="https://developer.wordpress.org/advanced-administration/wordpress/wp-config/#moving-uploads-folder" target="_blank">uploads</a> folder locations.</p>
+            <p class="bn-mt-3">To use the Bunny Offloader, your WordPress installation must use the standard directory structure. If you need assistance with custom configurations, please <a href="https://dash.bunny.net/support/tickets" target="_blank">contact Bunny.net support</a>.</p>
         </div>
     </div>
 </div>

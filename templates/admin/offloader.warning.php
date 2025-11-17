@@ -31,9 +31,10 @@ if (!defined('ABSPATH')) {
 <div class="container bg-gradient bn-p-0 bn-pb-5">
     <section class="bn-section bn-section-hero bn-p-5">
         <div>
-            <h1>Bunny Storage</h1>
-            <h2>What is Content Offloading?</h2>
-            <p>Improve your website performance and user experience. Reduce load times and increase conversion rates in just a few clicks. Get hopping in under 5 minutes without writing a single line of code.</p>
+            <h1>Bunny Offloader</h1>
+            <h2>CDN Configured But Offloader Not Enabled</h2>
+            <p>We detected that CDN acceleration is configured, but the Bunny Offloader is not yet enabled. To prevent broken images and ensure media files are properly delivered, please enable the Content Offloader below.</p>
+            <p class="bn-mt-3">The Offloader will automatically transfer your WordPress media files to Bunny Storage, making them available for CDN delivery.</p>
         </div>
         <img src="<?php echo esc_attr($this->assetUrl('offloader-header.svg')) ?>" alt="">
     </section>

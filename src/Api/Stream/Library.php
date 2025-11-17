@@ -26,14 +26,16 @@ class Library
     private string $accessKey;
     private int $pullzoneId;
     private bool $embedTokenAuthentication;
+    private string $hostname;
 
-    public function __construct(int $id, string $name, string $accessKey, int $pullzoneId, bool $embedTokenAuthentication)
+    public function __construct(int $id, string $name, string $accessKey, int $pullzoneId, bool $embedTokenAuthentication, string $hostname)
     {
         $this->id = $id;
         $this->name = $name;
         $this->accessKey = $accessKey;
         $this->pullzoneId = $pullzoneId;
         $this->embedTokenAuthentication = $embedTokenAuthentication;
+        $this->hostname = $hostname;
     }
 
     /**
@@ -41,7 +43,9 @@ class Library
      */
     public static function fromApiResponse(array $data): Library
     {
-        return new self($data['Id'], $data['Name'], $data['ApiKey'], $data['PullZoneId'], (bool) $data['PlayerTokenAuthenticationEnabled']);
+        // Use CDN hostname if available, otherwise construct from VideoLibraryId
+        $hostname = $data['Hostname'] ?? $data['CDNHostname'] ?? sprintf('vz-%s.b-cdn.net', substr(md5((string)$data['Id']), 0, 8));
+        return new self($data['Id'], $data['Name'], $data['ApiKey'], $data['PullZoneId'], (bool) $data['PlayerTokenAuthenticationEnabled'], $hostname);
     }
 
     public function getId(): int
@@ -67,5 +71,10 @@ class Library
     public function isEmbedTokenAuthentication(): bool
     {
         return $this->embedTokenAuthentication;
+    }
+
+    public function getHostname(): string
+    {
+        return $this->hostname;
     }
 }

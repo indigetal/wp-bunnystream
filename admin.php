@@ -52,7 +52,7 @@ add_action('admin_menu', function () {
     }
 
     $isAgencyMode = 'agency' === get_option('bunnycdn_wizard_mode', 'standalone');
-    add_submenu_page('bunnycdn', 'bunny.net', $isAgencyMode ? __('Overview', 'bunnycdn') : __('Overview', 'bunnycdn'), 'manage_options', 'bunnycdn');
+    add_submenu_page('bunnycdn', 'bunny.net', $isAgencyMode ? __('Overview', 'bunny-offload') : __('Overview', 'bunny-offload'), 'manage_options', 'bunny-offload');
 
     // Simplified menu - CDN, Optimizer, Fonts removed
     $submenus = [
@@ -136,7 +136,7 @@ add_action('admin_notices', function () {
         bunny_polyfill_wp_admin_notice(
             sprintf(
                 /* translators: 1: <a href=...> 2: </a> */
-                esc_html__('bunny.net: There was an issue while offloading your files to the Edge Storage. To get help, please %1$sreach out to our Super Bunnies%2$s.', 'bunnycdn'),
+                esc_html__('bunny.net: There was an issue while offloading your files to the Edge Storage. To get help, please %1$sreach out to our Super Bunnies%2$s.', 'bunny-offload'),
                 '<a href="https://dash.bunny.net/support/tickets" target="_blank">',
                 '</a>'
             ),

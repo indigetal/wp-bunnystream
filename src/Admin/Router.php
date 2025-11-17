@@ -59,6 +59,6 @@ class Router
 
             return;
         }
-        $this->container->renderTemplateFile('index.error.php', ['error' => __('Page not found', 'bunnycdn')], ['cssClass' => 'index'], '_base.index.php');
+        $this->container->renderTemplateFile('index.error.php', ['error' => __('Page not found', 'bunny-offload')], ['cssClass' => 'index'], '_base.index.php');
     }
 }

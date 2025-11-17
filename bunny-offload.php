@@ -1,7 +1,7 @@
 <?php
 
-// Bunny Media Library
-// Enhanced fork of bunny.net WordPress Plugin
+// Bunny Offload Media Library
+// Simplified fork of bunny.net WordPress Plugin focused on media offloading
 //
 // Original: Copyright (C) 2024-2025 BunnyWay d.o.o.
 // Fork: Copyright (C) 2025 Indigetal WebCraft
@@ -21,21 +21,29 @@
 //
 // ---
 //
-// This plugin is a fork of the bunny.net WordPress Plugin v2.3.5
+// FORK INFORMATION
+// ----------------
+// Forked from: bunny.net WordPress Plugin v2.3.5
 // Original: https://wordpress.org/plugins/bunnycdn/
-// 
-// Enhanced for automatic media offloading with per-user organization.
-// Simplified by removing full CDN acceleration features to focus on
-// media offloading (Stream for video, Storage Zones for images/documents).
 //
-// Major changes from original:
-// - Added automatic Media Library integration
-// - Added per-user organization (collections for videos, folders for images)
-// - Added bulk import/export tools
-// - Removed full CDN acceleration (DNS, Pullzone management)
-// - Removed font optimization
-// - Removed image optimization
-// - Simplified setup wizard
+// SCOPE: Media offloading to Bunny.net (Storage + Stream)
+// 
+// WHAT'S INCLUDED:
+// ✅ Automatic media offloading (videos, images, documents)
+// ✅ Bunny Stream integration (video hosting)
+// ✅ Bunny Storage integration (cloud storage)
+// ✅ Seamless WordPress Media Library integration
+// ✅ Gutenberg block for video embeds
+// ✅ Simplified 3-step setup wizard
+// ✅ Agency Mode support
+//
+// WHAT'S REMOVED (Configure on dash.bunny.net instead):
+// ❌ CDN/Pullzone management UI
+// ❌ Image Optimizer
+// ❌ Font Optimizer
+// ❌ HTML rewriting
+//
+// RESULT: 44% smaller codebase, focused functionality, fewer conflicts
 
 declare(strict_types=1);
 
@@ -46,9 +54,9 @@ if (!defined('ABSPATH')) {
 
 /*
 Plugin Name: Bunny Offload Media Library
-Plugin URI: https://github.com/yourusername/bunny-media-library
-Description: Automatically offload WordPress media (videos, images, documents) to Bunny.net with per-user organization. Enhanced fork of bunny.net plugin focused on media offloading.
-Version: 1.0.2-alpha
+Plugin URI: https://github.com/indigetal/bunny-offload
+Description: Automatically offload WordPress media to Bunny.net cloud storage. Simplified fork focused on media offloading (Storage + Stream) without CDN management complexity.
+Version: 1.0.3-alpha
 Requires at least: 6.7
 Tested up to: 6.8
 Requires PHP: 8.1
@@ -57,9 +65,10 @@ Author URI: https://indigetal.com
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 Text Domain: bunny-offload
+Domain Path: /languages
 */
 
-const BUNNY_OFFLOAD_VERSION = '1.0.2-alpha';
+const BUNNY_OFFLOAD_VERSION = '1.0.3-alpha';
 const BUNNY_OFFLOAD_FORKED_FROM = '2.3.5'; // Original bunny.net plugin version
 
 require_once __DIR__.'/src/functions.php';

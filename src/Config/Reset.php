@@ -23,24 +23,19 @@ class Reset
 {
     public static function all(): void
     {
-        delete_site_transient('bunnycdn_statistics');
+        // Core plugin options
+        delete_option('bunny-offload'); // Legacy V1 option
+        delete_option('bunnycdn_api_key');
+        delete_option('bunnycdn_api_user');
+        delete_option('bunnycdn_wizard_finished');
+        delete_option('bunnycdn_wizard_mode');
+        
+        // Migration flags
         delete_option('_bunnycdn_migrated_excluded_extensions');
         delete_option('_bunnycdn_migrated_wp65');
         delete_option('_bunnycdn_migration_warning');
-        delete_option('_bunnycdn_offloader_last_password_check');
-        delete_option('_bunnycdn_offloader_last_sync');
-        delete_option('bunnycdn');
-        delete_option('bunnycdn_api_key');
-        delete_option('bunnycdn_api_user');
-        delete_option('bunnycdn_cdn_disable_admin');
-        delete_option('bunnycdn_cdn_enabled');
-        delete_option('bunnycdn_cdn_excluded');
-        delete_option('bunnycdn_cdn_hostname');
-        delete_option('bunnycdn_cdn_included');
-        delete_option('bunnycdn_cdn_pullzone');
-        delete_option('bunnycdn_cdn_status');
-        delete_option('bunnycdn_cdn_url');
-        delete_option('bunnycdn_fonts_enabled');
+        
+        // Offloader options (Storage Zone media offloading)
         delete_option('bunnycdn_offloader_enabled');
         delete_option('bunnycdn_offloader_excluded');
         delete_option('bunnycdn_offloader_storage_password');
@@ -49,12 +44,28 @@ class Reset
         delete_option('bunnycdn_offloader_sync_existing');
         delete_option('bunnycdn_offloader_sync_path_prefix');
         delete_option('bunnycdn_offloader_sync_token_hash');
+        delete_option('_bunnycdn_offloader_last_password_check');
+        delete_option('_bunnycdn_offloader_last_sync');
+        
+        // Stream options (video embedding)
         delete_option('bunnycdn_stream_libraries_all');
         delete_option('bunnycdn_stream_libraries');
         delete_option('bunnycdn_stream_allow_uploads');
-        delete_option('bunnycdn_wizard_finished');
-        delete_option('bunnycdn_wizard_mode');
         self::clearTokenAuthenticationCachedKeys();
+        
+        // CDN options cleanup (from previous plugin versions, no longer managed here)
+        delete_option('bunnycdn_cdn_disable_admin');
+        delete_option('bunnycdn_cdn_enabled');
+        delete_option('bunnycdn_cdn_excluded');
+        delete_option('bunnycdn_cdn_hostname');
+        delete_option('bunnycdn_cdn_included');
+        delete_option('bunnycdn_cdn_pullzone');
+        delete_option('bunnycdn_cdn_status');
+        delete_option('bunnycdn_cdn_url');
+        delete_site_transient('bunnycdn_statistics');
+        
+        // Fonts option cleanup (feature removed)
+        delete_option('bunnycdn_fonts_enabled');
     }
 
     public static function convertToAgencyMode(): void

@@ -31,38 +31,13 @@ if (!defined('ABSPATH')) {
 <div class="container no-nav bn-p-0">
     <section class="bn-section bg-gradient-reverse welcome">
         <img src="<?php echo esc_attr($this->assetUrl('homepage-welcome.png')) ?>" alt="">
-        <h2>Start your <strong>14-Day FREE</strong> Trial</h2>
+        <h2>Welcome to <strong>Bunny Offload Media Library</strong></h2>
+        <p class="bn-mt-3 bn-text-200-regular">Automatically offload WordPress media to Bunny.net cloud storage and stream video with seamless Media Library integration.</p>
         <a href="<?php echo $registerUrlSafe ?>" target="_blank" class="bunnycdn-button bunnycdn-button--primary bunnycdn-button--xxl">Create An Account</a>
         <p>Already have an account? <a href="<?php echo $loginUrlSafe ?>">Log in</a>.</p>
     </section>
     <section class="bn-section subtext bn-py-7 bn-px-6">
-        <p>Supercharge your website in under <strong>5 minutes</strong>.</p>
-    </section>
-    <section class="bn-section columns-2">
-        <div class="bn-text-center">
-            <img src="<?php echo esc_attr($this->assetUrl('homepage-cdn.svg')) ?>" alt="">
-        </div>
-        <div>
-            <h3>Bunny CDN</h3>
-            <h4>Hop ahead of the competition</h4>
-            <p>
-                Hop on a lightning fast global content delivery network with 123 PoPs and deliver consistent experience
-                to everyone, no matter where in the world they are!
-            </p>
-        </div>
-    </section>
-    <section class="bn-section columns-2">
-        <div class="bn-text-center">
-            <img src="<?php echo esc_attr($this->assetUrl('homepage-optimizer.svg')) ?>" alt="">
-        </div>
-        <div>
-            <h3>Bunny Optimizer</h3>
-            <h4>Image optimization. Made easy.</h4>
-            <p>
-                Automatically reduce the size of your images by up to 80%, and resize them to best fit the screen of your
-                user's devices. Compress and minify your CSS and JavaScript files and make your website truly hop.
-            </p>
-        </div>
+        <p>Set up media offloading in under <strong>5 minutes</strong>.</p>
     </section>
     <section class="bn-section columns-2">
         <div class="bn-text-center">
@@ -70,26 +45,29 @@ if (!defined('ABSPATH')) {
         </div>
         <div>
             <h3>Bunny Offloader</h3>
-            <h4>Simplified Storage Offloading & Replication</h4>
+            <h4>Automatic Media Offloading to Cloud Storage</h4>
             <p>
-                Automatically move content from your WordPress platform to Bunny Storage, our high-performance and
-                cost-effective cloud storage service for optimal latency, global replication, and maximum throughput.
-                After activating it, any new content you upload to WordPress will automatically be transferred to Bunny
-                Storage, providing your users with up to 5x faster download speeds compared to traditional object storage
-                solutions.
+                Automatically offload WordPress media files (images, videos, documents) to Bunny Storage, a high-performance 
+                and cost-effective cloud storage service. Any new media you upload to WordPress will be automatically 
+                transferred to Bunny Storage with optional global replication for redundancy.
+            </p>
+            <p class="bn-mt-2">
+                Optionally configure a Pullzone on <a href="https://dash.bunny.net" target="_blank">dash.bunny.net</a> 
+                to deliver offloaded media via CDN for faster global delivery.
             </p>
         </div>
     </section>
     <section class="bn-section columns-2">
         <div class="bn-text-center">
-            <img src="<?php echo esc_attr($this->assetUrl('homepage-fonts.svg')) ?>" alt="">
+            <img src="<?php echo esc_attr($this->assetUrl('homepage-stream.svg')) ?>" alt="">
         </div>
         <div>
-            <h3>Bunny Fonts</h3>
-            <h4>Take control of your fonts</h4>
+            <h3>Bunny Stream</h3>
+            <h4>Professional Video Hosting & Delivery</h4>
             <p>
-                Push your privacy to the next level. Prevent your users from being tracked by 3rd party websites and
-                simplify GDPR compliance!
+                Embed and deliver video content with exceptional performance powered by Bunny Stream. Upload videos 
+                directly from WordPress Media Library and embed them with the Bunny Stream video block for seamless 
+                integration with your content.
             </p>
         </div>
     </section>

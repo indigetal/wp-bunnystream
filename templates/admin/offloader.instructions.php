@@ -28,7 +28,6 @@ if (!defined('ABSPATH')) {
  * @var \Bunny\Wordpress\Config\Offloader $config
  * @var bool $showApiKeyAlert
  * @var bool $showCdnAccelerationAlert
- * @var bool $suggestAcceleration
  */
 ?>
 <form class="container bg-gradient bn-p-0" method="POST" autocomplete="off">
@@ -36,10 +35,13 @@ if (!defined('ABSPATH')) {
         <div>
             <h1>Bunny Offloader</h1>
             <p class="bn-text-200-regular">
-                Automatically move content from your WordPress platform to Bunny Storage, our high-performance and cost-effective
-                cloud storage service for optimal latency, global replication, and maximum throughput. After activating it,
-                any new content you upload to WordPress will automatically be transferred to Bunny Storage, providing your
-                users with up to 5x faster download speeds compared to traditional object storage solutions.
+                Automatically offload WordPress media files to Bunny Storage, a high-performance and cost-effective
+                cloud storage service with optimal latency, global replication, and maximum throughput. After setup,
+                any new media you upload to WordPress will automatically be transferred to Bunny Storage.
+            </p>
+            <p class="bn-text-200-regular bn-mt-3">
+                Offloaded media can be optionally accelerated with Bunny CDN by configuring a Pullzone on 
+                <a href="https://dash.bunny.net" target="_blank">dash.bunny.net</a> to deliver content globally with low latency.
             </p>
         </div>
         <img src="<?php echo esc_attr($this->assetUrl('offloader-header.svg')) ?>" alt="">
@@ -51,21 +53,19 @@ if (!defined('ABSPATH')) {
     <div class="bn-m-5"><?php echo $this->renderPartialFile('cdn-acceleration.alert.php'); ?></div>
     <?php endif; ?>
     <div class="bn-px-5">
-        <?php if ($suggestAcceleration): ?>
-            <section class="bn-section bn-px-0 bn-section--no-divider">
-                <div id="cdn-acceleration-enable-section" class="bunnycdn-alert-cdn-acceleration">
-                    <p>We detected you're using Bunny DNS with CDN acceleration, but this plugin isn't set up for this. Please enable CDN acceleration to use the Content Offloading feature.</p>
-                    <button type="button" class="bunnycdn-button bunnycdn-button--secondary bunnycdn-button--lg" id="cdn-acceleration-enable">Enable CDN acceleration</button>
-                    <div class="alert bn-mt-4 bn-d-none"></div>
-                </div>
-            </section>
-        <?php endif; ?>
         <section class="bn-section statistics">
             <?php echo $this->renderPartialFile('offloader.statistics.php', ['attachments' => $attachments, 'config' => $config, 'attachmentsWithError' => 0]) ?>
         </section>
         <section class="bn-section bn-px-0 bn-section--no-divider">
-            <p class="bn-text-200-regular">To enable Bunny Offloader and unlock up to 5X faster performance for uncached content, you must first enable Bunny DNS with CDN Proxy in your bunny.net account.</p>
-            <a class="bunnycdn-button bunnycdn-button--primary bn-mt-4" href="https://support.bunny.net/hc/en-us/articles/12936040570012-How-to-enable-CDN-acceleration-in-Bunny-DNS" target="_blank">Enable Bunny DNS</a>
+            <h3 class="bn-section__title">Get Started with Bunny Offloader</h3>
+            <p class="bn-text-200-regular bn-mb-3">To enable Bunny Offloader, run the Setup Wizard to create a Storage Zone and configure automatic media offloading.</p>
+            <ol class="bn-ml-4 bn-mb-4">
+                <li class="bn-mb-2">The wizard will create a new Bunny Storage Zone for your media files</li>
+                <li class="bn-mb-2">Configure optional replication regions for global redundancy</li>
+                <li class="bn-mb-2">Choose whether to offload existing media or only new uploads</li>
+            </ol>
+            <p class="bn-text-200-regular bn-mb-4"><strong>Optional:</strong> After setup, you can configure a Pullzone on <a href="https://dash.bunny.net" target="_blank">dash.bunny.net</a> to deliver offloaded media via CDN for faster global delivery.</p>
+            <a class="bunnycdn-button bunnycdn-button--primary" href="<?php echo esc_url(admin_url('admin.php?page=bunnycdn&section=wizard')) ?>">Run Setup Wizard</a>
         </section>
     </div>
     <?php echo wp_nonce_field('bunnycdn-save-cdn') ?>
