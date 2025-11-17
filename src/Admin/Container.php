@@ -19,17 +19,13 @@ declare(strict_types=1);
 
 namespace Bunny\Wordpress\Admin;
 
-use Bunny\Wordpress\Admin\Controller\Attachment as AttachmentController;
 use Bunny\Wordpress\Api\Client as ApiClient;
 use Bunny\Wordpress\Api\Config as ApiConfig;
-use Bunny\Wordpress\Config\Cdn as CdnConfig;
-use Bunny\Wordpress\Config\Fonts as FontsConfig;
 use Bunny\Wordpress\Config\Offloader as OffloaderConfig;
 use Bunny\Wordpress\Config\Stream as StreamConfig;
 use Bunny\Wordpress\Container as AppContainer;
 use Bunny\Wordpress\Service\AttachmentCounter;
 use Bunny\Wordpress\Service\AttachmentMover;
-use Bunny\Wordpress\Service\CdnAcceleration;
 use Bunny\Wordpress\Service\OffloaderSetup;
 use Bunny\Wordpress\Utils\Offloader as OffloaderUtils;
 use Bunny\Wordpress\Utils\Wizard as WizardUtils;
@@ -111,7 +107,7 @@ class Container
 
     public function getVersion(): string
     {
-        return BUNNYCDN_WP_VERSION;
+        return BUNNY_OFFLOAD_VERSION;
     }
 
     /**
@@ -127,38 +123,12 @@ class Container
         }
     }
 
-    public function getCdnAcceleration(): CdnAcceleration
-    {
-        static $instance;
-        if (null !== $instance) {
-            return $instance;
-        }
-        $instance = new CdnAcceleration($this->getApiClient(), $this->getSanitizedServerVars(), $this->getAttachmentCounter(), $this->getCdnConfig()->isAgencyMode(), $this->getOffloaderConfig()->isEnabled(), $this->getOffloaderConfig()->isConfigured(), $this->getCdnConfig()->getPullzoneId());
-
-        return $instance;
-    }
-
-    public function newCdnAccelerationForWizard(bool $isAgencyMode): CdnAcceleration
-    {
-        return new CdnAcceleration($this->getApiClient(), $this->getSanitizedServerVars(), $this->getAttachmentCounter(), $isAgencyMode, false, false, null);
-    }
-
     /**
      * @return array<string, string>
      */
     public function getSanitizedServerVars(): array
     {
         return ['HTTP_HOST' => $this->sanitizeHostname($_SERVER['HTTP_HOST']), 'HTTP_VIA' => preg_replace('#([^\\sa-zA-Z0-9-_/.]+)#', '', $_SERVER['HTTP_VIA'] ?? ''), 'HTTP_CDN_REQUESTID' => preg_replace('#([^a-zA-Z0-9-]+)#', '', $_SERVER['HTTP_CDN_REQUESTID'] ?? ''), 'REQUEST_METHOD' => preg_replace('#([^a-zA-Z]+)#', '', $_SERVER['REQUEST_METHOD'] ?? ''), 'REQUEST_SCHEME' => preg_replace('#([^a-z]+)#', '', $_SERVER['REQUEST_SCHEME'] ?? '')];
-    }
-
-    public function getCdnConfig(): CdnConfig
-    {
-        return $this->container->getCdnConfig();
-    }
-
-    public function getFontsConfig(): FontsConfig
-    {
-        return $this->container->getFontsConfig();
     }
 
     public function getOffloaderConfig(): OffloaderConfig
@@ -173,7 +143,7 @@ class Container
 
     public function newOffloaderSetup(): OffloaderSetup
     {
-        return new OffloaderSetup($this->getApiClient(), $this->getCdnAcceleration(), $this->getOffloaderUtils(), $this->getPathPrefix());
+        return new OffloaderSetup($this->getApiClient(), $this->getOffloaderUtils(), $this->getPathPrefix());
     }
 
     public function getAttachmentCounter(): AttachmentCounter
@@ -214,11 +184,6 @@ class Container
         }
 
         return add_query_arg($params, admin_url('admin.php'));
-    }
-
-    public function newAttachmentController(): AttachmentController
-    {
-        return new AttachmentController($this->container->getStorageClientFactory()->newWithConfig($this->container->getOffloaderConfig()));
     }
 
     public function getPathPrefix(): string

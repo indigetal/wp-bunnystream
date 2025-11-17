@@ -39,7 +39,7 @@ class About implements ControllerInterface
         foreach ($headerValues as $key => $value) {
             $headers[] = $key.': '.(empty($value) ? '<em>undefined</em>' : '<code>'.esc_html($value).'</code>');
         }
-        $info = ['Plugin version' => esc_html(BUNNYCDN_WP_VERSION), 'WordPress version' => esc_html($wp_version), 'Request headers' => implode('<br />', $headers), 'CDN acceleration override' => defined('BUNNYCDN_FORCE_ACCELERATED') ? $this->getHtmlTyped(BUNNYCDN_FORCE_ACCELERATED) : '<em>not set</em>'];
+        $info = ['Plugin version' => esc_html(BUNNY_OFFLOAD_VERSION), 'WordPress version' => esc_html($wp_version), 'Request headers' => implode('<br />', $headers), 'CDN acceleration override' => defined('BUNNYCDN_FORCE_ACCELERATED') ? $this->getHtmlTyped(BUNNYCDN_FORCE_ACCELERATED) : '<em>not set</em>'];
         if ($this->container->getOffloaderConfig()->isConfigured()) {
             $info['WP Upload Directory'] = esc_html(wp_get_upload_dir()['basedir']);
             $info['Offloader base path'] = esc_html(bunnycdn_offloader_remote_path(wp_get_upload_dir()['basedir'].''));

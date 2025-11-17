@@ -23,6 +23,5 @@ if (!defined('ABSPATH')) {
     exit('-1');
 }
 
-if (wp_using_themes()) {
-    \Bunny\Wordpress\HtmlRewriter::register();
-}
+// HtmlRewriter removed - HTML rewriting functionality out of scope
+// Offloader registration happens in bunny-media.php via Offloader::register()

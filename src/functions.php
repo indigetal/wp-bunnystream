@@ -20,10 +20,8 @@ declare(strict_types=1);
 namespace {
     function bunnycdn_activate_plugin(): void
     {
-        if (!get_option('bunnycdn_wizard_finished')) {
-            require_once __DIR__.'/../vendor/autoload.php';
-            bunnycdn_container()->newMigrateFromV1()->perform();
-        }
+        // Migration from V1 removed - simplified plugin no longer needs legacy migration
+        // Plugin activation is handled by WordPress
     }
     function bunnycdn_uninstall_plugin(): void
     {

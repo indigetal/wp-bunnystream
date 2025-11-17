@@ -23,19 +23,8 @@ if (!defined('ABSPATH')) {
     exit('-1');
 }
 
-// auto-upgrade from V1
-if (!get_option('bunnycdn_wizard_finished')) {
-    bunnycdn_container()->newMigrateFromV1()->perform();
-}
-
-// reconfigure CORS for WP 6.5+
-if (get_option('bunnycdn_wizard_finished') && !get_option('_bunnycdn_migrated_wp65')) {
-    try {
-        bunnycdn_container()->newMigrateToWP65()->perform();
-    } catch (\Exception $e) {
-        trigger_error('bunnycdn: could not upgrade pullzone to support WordPress 6.5: '.$e->getMessage(), \E_USER_WARNING);
-    }
-}
+// Legacy migrations removed (V1 and WP 6.5 Pullzone CORS)
+// Only excluded extensions migration remains (storage-related, not CDN)
 
 // migrate excluded extensions to excluded paths
 if (get_option('bunnycdn_wizard_finished') && !get_option('_bunnycdn_migrated_excluded_extensions')) {
@@ -63,21 +52,17 @@ add_action('admin_menu', function () {
     }
 
     $isAgencyMode = 'agency' === get_option('bunnycdn_wizard_mode', 'standalone');
-    add_submenu_page('bunnycdn', 'bunny.net', $isAgencyMode ? 'CDN' : __('Overview', 'bunnycdn'), 'manage_options', 'bunnycdn');
+    add_submenu_page('bunnycdn', 'bunny.net', $isAgencyMode ? __('Overview', 'bunnycdn') : __('Overview', 'bunnycdn'), 'manage_options', 'bunnycdn');
 
+    // Simplified menu - CDN, Optimizer, Fonts removed
     $submenus = [
-        'cdn' => 'CDN',
         'offloader' => 'Offloader',
-        'optimizer' => 'Optimizer',
         'stream' => 'Stream',
-        'fonts' => 'Fonts',
     ];
 
     if ($isAgencyMode) {
-        unset($submenus['cdn']);
-        unset($submenus['offloader']);
-        unset($submenus['optimizer']);
-        unset($submenus['stream']);
+        // Agency mode shows Offloader and Stream (no CDN features)
+        // Keep both submenus
     }
 
     foreach ($submenus as $slug => $text) {
@@ -109,16 +94,12 @@ add_action('wp_ajax_bunnycdn', function () {
 add_action('load-toplevel_page_bunnycdn', function () {
     $container = bunnycdn_admin_container();
 
-    if (isset($_GET['section']) && 'attachment' === $_GET['section']) {
-        $container->newAttachmentController()->run();
-
-        wp_die();
-        exit;
-    }
+    // Attachment controller removed - inline attachment management no longer needed
+    // Attachments now managed through standard WordPress Media Library
 
     $isAgencyMode = 'agency' === get_option('bunnycdn_wizard_mode', 'standalone');
     $section = sanitize_key($_GET['section'] ?? '');
-    $comboboxSections = ['cdn', 'offloader'];
+    $comboboxSections = ['offloader']; // CDN removed
 
     if (($isAgencyMode && '' === $section) || !$isAgencyMode && in_array($section, $comboboxSections, true)) {
         add_action('wp_print_scripts', function () use ($container) {
@@ -126,15 +107,15 @@ add_action('load-toplevel_page_bunnycdn', function () {
         }, 1, 0);
     }
 
-    wp_enqueue_script('bunnycdn-admin', $container->assetUrl('admin.js'), [], BUNNYCDN_WP_VERSION);
-    wp_enqueue_script('bunnycdn-admin-redirect', $container->assetUrl('redirect.js'), [], BUNNYCDN_WP_VERSION, true);
-    wp_enqueue_style('bunnycdn-admin', $container->assetUrl('admin.css'), [], BUNNYCDN_WP_VERSION);
+    wp_enqueue_script('bunnycdn-admin', $container->assetUrl('admin.js'), [], BUNNY_OFFLOAD_VERSION);
+    wp_enqueue_script('bunnycdn-admin-redirect', $container->assetUrl('redirect.js'), [], BUNNY_OFFLOAD_VERSION, true);
+    wp_enqueue_style('bunnycdn-admin', $container->assetUrl('admin.css'), [], BUNNY_OFFLOAD_VERSION);
 
     if ('stream' === $section) {
         add_thickbox();
-        wp_enqueue_script('bunnycdn-admin-thickbox', $container->assetUrl('admin-thickbox.js'), [], BUNNYCDN_WP_VERSION);
-        wp_enqueue_script('bunnycdn-slimselect', $container->assetUrl('slimselect.min.js'), [], BUNNYCDN_WP_VERSION);
-        wp_enqueue_style('bunnycdn-slimselect', $container->assetUrl('slimselect.min.css'), [], BUNNYCDN_WP_VERSION);
+        wp_enqueue_script('bunnycdn-admin-thickbox', $container->assetUrl('admin-thickbox.js'), [], BUNNY_OFFLOAD_VERSION);
+        wp_enqueue_script('bunnycdn-slimselect', $container->assetUrl('slimselect.min.js'), [], BUNNY_OFFLOAD_VERSION);
+        wp_enqueue_style('bunnycdn-slimselect', $container->assetUrl('slimselect.min.css'), [], BUNNY_OFFLOAD_VERSION);
     }
 });
 

@@ -21,27 +21,22 @@ namespace Bunny\Wordpress;
 
 use Bunny\Wordpress\Api\Client as ApiClient;
 use Bunny\Wordpress\Api\Config as ApiConfig;
-use Bunny\Wordpress\Config\Cdn as CdnConfig;
-use Bunny\Wordpress\Config\Fonts as FontsConfig;
 use Bunny\Wordpress\Config\Offloader as OffloaderConfig;
 use Bunny\Wordpress\Config\Stream as StreamConfig;
 use Bunny\Wordpress\Service\AttachmentCounter;
 use Bunny\Wordpress\Service\AttachmentMover;
 use Bunny\Wordpress\Service\MigrateExcludedExtensions;
-use Bunny\Wordpress\Service\MigrateFromV1;
-use Bunny\Wordpress\Service\MigrateToWP65;
 use Bunny\Wordpress\Utils\Offloader as OffloaderUtils;
 use Bunny\Wordpress\Utils\StorageClientFactory;
 
 class Container
 {
-    private ?CdnConfig $cdnConfig = null;
     private ?OffloaderConfig $offloaderConfig = null;
 
     public function newApiClient(ApiConfig $config): ApiClient
     {
         global $wp_version;
-        $httpClient = new \Bunny_WP_Plugin\GuzzleHttp\Client(['base_uri' => ApiClient::BASE_URL, 'timeout' => 20, 'allow_redirects' => false, 'http_errors' => false, 'proxy' => bunnycdn_http_proxy(), 'headers' => ['Accept' => 'application/json', 'User-Agent' => sprintf('bunny-wp-plugin/%s WP/%s PHP/%s', BUNNYCDN_WP_VERSION, $wp_version, \PHP_VERSION), 'AccessKey' => $config->getApiKey()]]);
+            $httpClient = new \Bunny_WP_Plugin\GuzzleHttp\Client(['base_uri' => ApiClient::BASE_URL, 'timeout' => 20, 'allow_redirects' => false, 'http_errors' => false, 'proxy' => bunnycdn_http_proxy(), 'headers' => ['Accept' => 'application/json', 'User-Agent' => sprintf('bunny-offload-plugin/%s WP/%s PHP/%s', BUNNY_OFFLOAD_VERSION, $wp_version, \PHP_VERSION), 'AccessKey' => $config->getApiKey()]]);
 
         return new ApiClient($httpClient);
     }
@@ -73,23 +68,6 @@ class Container
         return $instance;
     }
 
-    public function getCdnConfig(): CdnConfig
-    {
-        if (null !== $this->cdnConfig) {
-            return $this->cdnConfig;
-        }
-        $this->cdnConfig = CdnConfig::fromWpOptions();
-
-        return $this->cdnConfig;
-    }
-
-    private function reloadCdnConfig(): CdnConfig
-    {
-        $this->cdnConfig = null;
-
-        return $this->getCdnConfig();
-    }
-
     public function getStreamConfig(): StreamConfig
     {
         static $instance;
@@ -97,17 +75,6 @@ class Container
             return $instance;
         }
         $instance = StreamConfig::fromWpOptions();
-
-        return $instance;
-    }
-
-    public function getFontsConfig(): FontsConfig
-    {
-        static $instance;
-        if (null !== $instance) {
-            return $instance;
-        }
-        $instance = FontsConfig::fromWpOptions();
 
         return $instance;
     }
@@ -127,20 +94,6 @@ class Container
         $this->offloaderConfig = null;
 
         return $this->getOffloaderConfig();
-    }
-
-    public function newMigrateFromV1(): MigrateFromV1
-    {
-        return new MigrateFromV1(function (string $apiKey) {
-            return $this->newApiClient($this->newApiConfig($apiKey));
-        }, function () {
-            $this->reloadCdnConfig()->saveToWpOptions();
-        });
-    }
-
-    public function newMigrateToWP65(): MigrateToWP65
-    {
-        return new MigrateToWP65($this->getApiClient(), $this->getCdnConfig());
     }
 
     public function getAttachmentCounter(): AttachmentCounter
