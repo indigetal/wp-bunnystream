@@ -24,16 +24,12 @@ if (!defined('ABSPATH')) {
 
 /**
  * @var \Bunny\Wordpress\Admin\Container $this
- * @var bool $showCdnAccelerationAlert
  */
 $monthLabel = date('F');
 
 ?>
 <div class="container bg-gradient bg-gradient--xl">
     <div class="alert bn-d-none">Error loading the information for this account. Please try again later.</div>
-    <?php if ($showCdnAccelerationAlert): ?>
-    <div class="bn-m-0"><?php echo $this->renderPartialFile('cdn-acceleration.alert.php'); ?></div>
-    <?php endif; ?>
     <section class="bn-mb-9">
         <div class="bn-section__title bn-mb-5">Balance and Usage</div>
         <div class="bn-columns">
@@ -77,58 +73,6 @@ $monthLabel = date('F');
         <div class="bn-chart bn-mt-5 bn-p-0">
             <div class="bn-section__title bn-px-5 bn-pt-5 bn-mb-0">Bandwidth Usage</div>
             <div data-chart="bandwidth">
-                <div class="bn-mt-6 bn-px-5">Loading...</div>
-            </div>
-        </div>
-    </section>
-    <section class="bn-mt-7">
-        <div class="bn-section__title">Cache Hit Ratio</div>
-        <p class="bn-section__description">Cache rate is the ratio of cache HIT requests versus MISS requests.</p>
-        <div class="bn-columns bn-align-items-center bn-mt-5">
-            <div class="bn-card">
-                <div class="bn-card__title">Cache Hit Rate</div>
-                <div class="bn-card__value bn-d-flex bn-align-items-center">
-                    <span data-api="cache-total">0.00 %</span>
-                    <span class="bn-badge bn-badge--stat bn-ms-2" data-api="cache-trend">
-                        <span class="bn-badge__icon"></span>
-                        <span class="bn-badge__text">0%</span>
-                    <span>
-                </div>
-                <p>in the last 30 days</p>
-            </div>
-            <div class="img bn-text-center bn-md-my-4">
-                <img src="<?php echo esc_attr($this->assetUrl('overview-cache.svg')) ?>" alt="">
-            </div>
-        </div>
-        <div class="bn-chart bn-p-0">
-            <div class="bn-section__title bn-px-5 bn-pt-5 bn-mb-0">Cache HIT Rate</div>
-            <div data-chart="cache">
-                <div class="bn-mt-6 bn-px-5">Loading...</div>
-            </div>
-        </div>
-    </section>
-    <section class="bn-mt-7">
-        <div class="bn-section__title">Total Requests Served</div>
-        <p class="bn-section__description">The total number of requests served through the CDN.</p>
-        <div class="bn-columns bn-align-items-center bn-mt-5">
-            <div class="bn-card">
-                <div class="bn-card__title">Requests Served</div>
-                <div class="bn-card__value bn-d-flex bn-align-items-center">
-                    <span data-api="requests-total">0</span>
-                    <span class="bn-badge bn-badge--stat bn-ms-2" data-api="requests-trend">
-                        <span class="bn-badge__icon"></span>
-                        <span class="bn-badge__text">0%</span>
-                    <span>
-                </div>
-                <p>in the last 30 days</p>
-            </div>
-            <div class="img bn-text-center bn-md-my-4">
-                <img src="<?php echo esc_attr($this->assetUrl('overview-requests.svg')) ?>" alt="">
-            </div>
-        </div>
-        <div class="bn-chart bn-p-0">
-            <div class="bn-section__title bn-px-5 bn-pt-5 bn-mb-0">Total Requests</div>
-            <div data-chart="requests">
                 <div class="bn-mt-6 bn-px-5">Loading...</div>
             </div>
         </div>

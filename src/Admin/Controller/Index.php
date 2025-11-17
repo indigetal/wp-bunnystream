@@ -37,9 +37,11 @@ class Index implements ControllerInterface
         if ('1' === get_option('bunnycdn_wizard_finished')) {
             $mode = get_option('bunnycdn_wizard_mode', 'standalone');
             if ('agency' === $mode) {
-                $_GET['section'] = 'cdn';
-                $this->container->newController(Cdn::class)->run($isAjax);
+                // Agency mode: redirect to Offloader (CDN section removed)
+                $_GET['section'] = 'offloader';
+                $this->container->newController(Offloader::class)->run($isAjax);
             } else {
+                // Standalone mode: redirect to Overview (billing/bandwidth)
                 $_GET['section'] = 'overview';
                 $this->container->newController(Overview::class)->run($isAjax);
             }

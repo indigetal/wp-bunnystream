@@ -45,70 +45,63 @@ class Overview implements ControllerInterface
         }
         wp_enqueue_script('echarts', $this->container->assetUrl('echarts.min.js'), ['jquery']);
         $this->container->getOffloaderUtils()->updateStoragePassword();
-        try {
-            $showCdnAccelerationAlert = $this->container->getCdnAcceleration()->shouldShowAlert();
-        } catch (\Exception $e) {
-            $showCdnAccelerationAlert = false;
-        }
-        $this->container->renderTemplateFile('overview.php', ['showCdnAccelerationAlert' => $showCdnAccelerationAlert], ['cssClass' => 'overview loading']);
+        // CDN acceleration alert removed - CDN features out of scope
+        $this->container->renderTemplateFile('overview.php', [], ['cssClass' => 'overview loading']);
     }
 
     private function handleGetApiData(): void
     {
-        $pullzoneId = $this->container->getCdnConfig()->getPullzoneId();
-        if (null === $pullzoneId) {
-            wp_send_json_error(['message' => 'Could not find the associated pullzone.']);
-
-            return;
-        }
+        // Simplified to Storage Zone metrics only (Pullzone statistics removed)
         $api = $this->container->getApiClient();
-        $dateToday = new \DateTime();
-        $date30Days = new \DateTime('30 days ago');
-        $date60Days = new \DateTime('60 days ago');
+        
         try {
             $billing = $api->getBilling();
-            $details = $api->getPullzoneDetails($pullzoneId);
-        } catch (NotFoundException $e) {
-            wp_send_json_error(['type' => 'error', 'message' => 'The associated pullzone does not exist any longer. Please double check your CDN configuration.']);
-
-            return;
         } catch (\Exception $e) {
-            wp_send_json_error(['type' => 'error', 'message' => 'The Bunny API is currently unavailable. Some configurations cannot be changed at the moment.'.\PHP_EOL.\PHP_EOL.'Details: '.$e->getMessage()]);
+            wp_send_json_error(['type' => 'error', 'message' => 'The Bunny API is currently unavailable. Please try again later.'.\PHP_EOL.\PHP_EOL.'Details: '.$e->getMessage()]);
 
             return;
         }
-        /** @var false|array{current: \Bunny\Wordpress\Api\Pullzone\Statistics, previous: \Bunny\Wordpress\Api\Pullzone\Statistics} $cachedStats */
-        $cachedStats = get_site_transient('bunnycdn_statistics');
-        if (false === $cachedStats) {
+
+        // Get Storage Zone bandwidth statistics (if configured)
+        $storageZoneId = $this->container->getOffloaderConfig()->getStoragezoneId();
+        $monthBandwidth = '0 B';
+        $monthCharges = '$0.00';
+        $bandwidthAvgCost = '$0.0000';
+        
+        if (null !== $storageZoneId) {
             try {
-                $cachedStats = ['current' => $api->getPullzoneStatistics($pullzoneId, $date30Days, $dateToday), 'previous' => $api->getPullzoneStatistics($pullzoneId, $date60Days, $date30Days)];
+                $storageDetails = $api->getStorageZone($storageZoneId);
+                // Note: Storage Zone API doesn't provide same detailed stats as Pullzone
+                // Future enhancement: aggregate from Storage Zone usage data
             } catch (\Exception $e) {
-                wp_send_json_error(['type' => 'warning', 'message' => 'The statistics are currently unavailable. Please try again later.']);
-
-                return;
+                // Storage zone stats unavailable, use defaults
             }
-            set_site_transient('bunnycdn_statistics', $cachedStats, 300);
-        }
-        $statistics = $cachedStats['current'];
-        $statisticsPreviousPeriod = $cachedStats['previous'];
-        $trendBandwidth = 0 === $statisticsPreviousPeriod->getBandwidth() ? 0 : round($statistics->getBandwidth() / $statisticsPreviousPeriod->getBandwidth() * 100);
-        $trendCache = $statisticsPreviousPeriod->getCacheHitRate() < 0.001 ? 0.0 : round($statistics->getCacheHitRate() / $statisticsPreviousPeriod->getCacheHitRate() * 100);
-        $trendRequests = 0 === $statisticsPreviousPeriod->getRequestsServed() ? 0 : round($statistics->getRequestsServed() / $statisticsPreviousPeriod->getRequestsServed() * 100);
-        wp_send_json_success(['overview' => ['billing' => ['balance' => $billing->getBalanceHumanReadable()], 'month' => ['bandwidth' => $details->getBandwidthUsedHumanReadable(), 'bandwidth_avg_cost' => $details->getBandwidthAverageCostHumanReadable(), 'charges' => $details->getChargesHumanReadable()]], 'bandwidth' => ['total' => $statistics->getBandwidthHumanReadable(), 'trend' => ['value' => sprintf('%.2f%%', $trendBandwidth), 'direction' => 0 != $trendBandwidth ? $trendBandwidth > 0 ? 'up' : 'down' : 'equal']], 'cache' => ['total' => $statistics->getCacheHitRateHumanReadable(), 'trend' => ['value' => sprintf('%.2f%%', $trendCache), 'direction' => 0 != $trendCache ? $trendCache > 0 ? 'up' : 'down' : 'equal']], 'requests' => ['total' => $statistics->getRequestsTotal(), 'trend' => ['value' => sprintf('%.2f%%', $trendRequests), 'direction' => 0 != $trendRequests ? $trendRequests > 0 ? 'up' : 'down' : 'equal']], 'chart' => ['bandwidth' => $this->convertChartData($statistics->getBandwidthHistory()), 'cache' => $this->convertChartData($statistics->getCacheHistory()), 'requests' => $this->convertChartData($statistics->getRequestsHistory())]]);
-    }
-
-    /**
-     * @param array<string, int> $data
-     *
-     * @return array<array{string, int}>
-     */
-    private function convertChartData(array $data): array
-    {
-        $result = [];
-        foreach ($data as $key => $value) {
-            $result[] = [substr($key, 0, 10), $value];
         }
 
-        return $result;
+        // Simplified response - billing and basic bandwidth only
+        // Cache and request statistics removed (CDN/Pullzone metrics)
+        wp_send_json_success([
+            'overview' => [
+                'billing' => [
+                    'balance' => $billing->getBalanceHumanReadable()
+                ],
+                'month' => [
+                    'bandwidth' => $monthBandwidth,
+                    'bandwidth_avg_cost' => $bandwidthAvgCost,
+                    'charges' => $monthCharges
+                ]
+            ],
+            'bandwidth' => [
+                'total' => $monthBandwidth,
+                'trend' => [
+                    'value' => '0%',
+                    'direction' => 'equal'
+                ]
+            ],
+            'chart' => [
+                'bandwidth' => []
+            ]
+        ]);
     }
+
 }

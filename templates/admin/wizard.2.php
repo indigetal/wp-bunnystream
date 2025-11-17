@@ -29,8 +29,6 @@ if (!defined('ABSPATH')) {
  * @var string $backUrlSafe
  * @var string $mode
  * @var string|null $error
- * @var \Bunny\Wordpress\Api\Pullzone\Info[]|null $pullzones
- * @var bool $isAccelerated
  */
 ?>
 <form method="POST" action="<?php echo $formUrlSafe ?>" class="container bg-transparent" autocomplete="off">
@@ -45,42 +43,15 @@ if (!defined('ABSPATH')) {
         <?php endif; ?>
         <div>
             <label class="bn-color-bunny-dark" for="website-url">Website URL:</label>
-            <input type="text" class="bunnycdn-input bn-mt-2" id="website-url" name="url" value="<?php echo esc_attr($url) ?>" <?php echo $isAccelerated ? 'readonly' : '' ?>>
+            <input type="text" class="bunnycdn-input bn-mt-2" id="website-url" name="url" value="<?php echo esc_attr($url) ?>" readonly>
         </div>
-        <p class="bn-py-3">Please confirm the URL from which the bunny.net Pull Zone will fetch files. This is usually your public website URL. This URL will also help the plugin to understand where and which URLs to accelerate with bunny.net. The default value was automatically configured based on your WordPress configuration.</p>
-        <p>You should only change this if your website is hosted on a different address than configured in the WordPress settings, or if the value was not correctly detected.</p>
-        <?php if (empty($pullzones)): ?>
-            <div class="bn-mt-3">
-                <input type="submit" value="Confirm URL" class="bunnycdn-button bunnycdn-button--primary">
-                <a href="<?php echo $backUrlSafe ?>" class="bunnycdn-button bunnycdn-button--secondary bn-ms-3">Go back</a>
-            </div>
-        <?php endif; ?>
+        <p class="bn-py-3">Please confirm your website URL. This will be used to configure Storage Zone paths for media offloading. The default value was automatically configured based on your WordPress settings.</p>
+        <p>You should only change this if your website is hosted on a different address than configured in the WordPress settings.</p>
+        <div class="bn-mt-3">
+            <input type="submit" value="Continue" class="bunnycdn-button bunnycdn-button--primary">
+            <a href="<?php echo $backUrlSafe ?>" class="bunnycdn-button bunnycdn-button--secondary bn-ms-3">Go back</a>
+        </div>
     </section>
-    <?php if (!empty($pullzones)): ?>
-        <section class="bn-section">
-            <div class="alert gray">
-                <div>
-                    <div class="alert__title">We found one or more related pullzone(s).</div>
-                    <p>We've found one or more Pull Zones that already match your website URL. To create a new Pull Zone, or reuse an existing one, you can use the dropdown below.</p>
-                </div>
-            </div>
-            <div class="bn-mt-3">
-                <label for="pullzone-id">Pullzone</label>
-                <select class="bn-select bn-mt-2" name="pullzone_id" id="pullzone-id">
-                    <option value="0" selected>Create a new pullzone</option>
-                    <?php foreach ($pullzones as $pullzone): ?>
-                        <option value="<?php echo esc_attr($pullzone->getId()) ?>"><?php echo esc_html($pullzone->getName()) ?> (<?php echo esc_html($pullzone->getId()) ?>)</option>
-                    <?php endforeach; ?>
-                </select>
-                <div>
-                    <div class="bn-mt-3">
-                        <input type="submit" value="Confirm URL" class="bunnycdn-button bunnycdn-button--primary">
-                        <a href="<?php echo $backUrlSafe ?>" class="bunnycdn-button bunnycdn-button--secondary">Go back</a>
-                    </div>
-                </div>
-            </div>
-        </section>
-    <?php endif; ?>
     <input type="hidden" name="mode" value="<?php echo esc_attr($mode) ?>">
     <?php echo wp_nonce_field('bunnycdn-save-wizard-step2') ?>
 </form>
